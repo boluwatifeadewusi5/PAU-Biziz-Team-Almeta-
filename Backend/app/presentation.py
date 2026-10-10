@@ -18,6 +18,7 @@ POST_SELECT = (
 
 def shape_post(row, client_id=None):
     p = dict(row)
+    client_id = client_id.strip() if isinstance(client_id, str) else None
 
     if p["price_mode"] == "contact":
         p["price_label"] = "Contact for price"
