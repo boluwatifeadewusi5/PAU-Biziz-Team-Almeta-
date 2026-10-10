@@ -1,3 +1,6 @@
+import MyBusinesses from './MyBusinesses'
+import ChoosePostBusiness from './ChoosePostBusiness'
+import AdminHistory from './AdminHistory'
 import AdminPage from './AdminPage'
 import BusinessReviewStatus from './BusinessReviewStatus'
 import CampusImage from './CampusImage'
@@ -650,7 +653,7 @@ function BusinessProfile({ businesses, posts }: { businesses: Business[]; posts:
   )
 }
 
-function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Business) => void; currentBusiness: Business | null }) {
+function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Business) => Promise<Business>; currentBusiness: Business | null }) {
   const navigate = useNavigate()
   const [draft, setDraft] = useState<BusinessDraft>({
     name: currentBusiness?.name || '',
@@ -711,10 +714,10 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
       logoUrl: savedLogo || categoryImage(draft.category,200),
     }
 
-    try { await onSave(savedBusiness) } catch(error) { setErrors({name: error instanceof Error ? error.message : 'Unable to save'}); setIsSaving(false); return }
+    let saved: Business;try { saved=await onSave(savedBusiness) } catch(error) { setErrors({name: error instanceof Error ? error.message : 'Unable to save'}); setIsSaving(false); return }
     setIsSaving(false)
     setIsSaved(true)
-    navigate('/business/status', {replace:true})
+    navigate('/business/status?business='+saved.id, {replace:true})
   }
 
   return (
@@ -786,7 +789,7 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
   )
 }
 
-function CreatePost({ onPublish, business }: { onPublish: (post: Post) => void; business: Business | null }) {
+function CreatePost({ onPublish, business }: { onPublish: (post: Post) => Promise<Post>; business: Business | null }) {
   const navigate = useNavigate()
   const [draft, setDraft] = useState<CreatePostDraft>({
     title: '',
@@ -847,9 +850,9 @@ function CreatePost({ onPublish, business }: { onPublish: (post: Post) => void; 
       businessName: business?.name || sampleBusinesses[0].name,
     }
 
-    try { await onPublish(nextPost) } catch(error) { setErrors({title: error instanceof Error ? error.message : 'Unable to publish'}); setIsPublishing(false); return }
+    let published:Post;try { published=await onPublish(nextPost) } catch(error) { setErrors({title: error instanceof Error ? error.message : 'Unable to publish'}); setIsPublishing(false); return }
     setIsPublishing(false)
-    setPublishedPost(nextPost)
+    setPublishedPost(published)
     setDraft({ title: '', description: '', category: business?.category || 'Other', price: '', availability: '', imageUrl: '' })
     setImageFile(null)
     setImagePreview('')
@@ -964,6 +967,10 @@ function ScreenHandoff({ title, owner }: { title: string; owner: string }) {
 
 export default function App() {
   const routeLocation = useLocation()
+  const selectedBusinessId=new URLSearchParams(routeLocation.search).get('business')
+  const [ownedBusinesses,setOwnedBusinesses]=useState<Business[]>([])
+  const [ownedLoaded,setOwnedLoaded]=useState(false)
+  const [ownedError,setOwnedError]=useState('')
   const [savedBusiness, setSavedBusiness] = useState<Business | null>(() => readStoredBusiness())
   const [createdPosts, setCreatedPosts] = useState<Post[]>(() => readStoredPosts())
 
@@ -972,31 +979,40 @@ export default function App() {
   useEffect(() => { if (!backendReady) return; Promise.all([listBusinesses(),listPosts(),listOwnedBusinesses()]).then(([bs,ps,owned])=>{
     const visible=bs.filter((b:any)=>b.approval_status==='approved');const preferred=visible.filter((b:any)=>!visible.some((other:any)=>other.id!==b.id&&other.owner_id===b.owner_id&&other.name.trim().toLowerCase()===b.name.trim().toLowerCase()&&ps.some((p:any)=>p.business_id===other.id)&&!ps.some((p:any)=>p.business_id===b.id)));const mapped=preferred.map((b:any)=>({...b,logoUrl:!b.logo_url || b.logo_url.includes('photo-1556157382-97eda2d62296') ? categoryImage(b.category,200) : b.logo_url,email:'',location:'PAU campus'}));setRemoteBusinesses(mapped);
     setRemotePosts(ps.filter((p:any)=>mapped.some((b:Business)=>b.id===p.business_id)).map((p:any)=>({...p,businessId:p.business_id,businessName:mapped.find((b:Business)=>b.id===p.business_id)?.name||'Campus business',imageUrl:p.image_url})));
-    const session=JSON.parse(localStorage.getItem('biziz-session')||'null');const mine=owned.find((b:any)=>b.owner_id===session?.user?.id&&ps.some((p:any)=>p.business_id===b.id))||owned.find((b:any)=>b.owner_id===session?.user?.id);setSavedBusiness(mine?{...mine,logoUrl:mine.logo_url||categoryImage(mine.category,200),email:'',location:'PAU campus'}:null)
-  }).catch(()=>{}); }, [routeLocation.pathname])
+    const session=JSON.parse(localStorage.getItem('biziz-session')||'null');const ownedMapped=owned.map((b:any)=>({...b,logoUrl:b.logo_url||categoryImage(b.category,200),email:'',location:'PAU campus'}));setOwnedBusinesses(ownedMapped);setOwnedLoaded(true);setOwnedError('');const mine=owned.find((b:any)=>b.id===selectedBusinessId)||owned.find((b:any)=>b.owner_id===session?.user?.id&&ps.some((p:any)=>p.business_id===b.id))||owned.find((b:any)=>b.owner_id===session?.user?.id);setSavedBusiness(mine?{...mine,logoUrl:mine.logo_url||categoryImage(mine.category,200),email:'',location:'PAU campus'}:null)
+  }).catch(e=>{setOwnedLoaded(true);setOwnedError(e.message||'Unable to load your businesses.');}); }, [routeLocation.pathname,selectedBusinessId])
+  const activeBusiness=selectedBusinessId?ownedBusinesses.find(b=>b.id===selectedBusinessId)||null:savedBusiness
   const businesses = useMemo(() => backendReady?remoteBusinesses:sampleBusinesses,[remoteBusinesses])
   const posts = useMemo(() => backendReady?remotePosts:samplePosts,[remotePosts])
 
   const saveBusiness = async (business: Business) => {
-    const row = await persistBusiness(business); business = {...business,id:row.id,approval_status:row.approval_status,review_note:row.review_note}
+    const row = await persistBusiness(business,{createNew:business.id===MY_BUSINESS_ID}); business = {...business,id:row.id,approval_status:row.approval_status,review_note:row.review_note}
     setSavedBusiness(business)
+    setOwnedBusinesses(state=>[business,...state.filter(b=>b.id!==business.id)])
     window.localStorage.setItem(BUSINESS_STORAGE_KEY, JSON.stringify(business))
+    return business
   }
 
   const publishPost = async (post: Post) => {
-    if (!savedBusiness) throw new Error('Set up your business before publishing.');if(savedBusiness.approval_status!=='approved')throw new Error('Your business must be approved before publishing.'); const row = await persistPost({...post,businessId:savedBusiness.id}); post = {...post,id:row.id,businessId:savedBusiness.id,businessName:savedBusiness.name}
+    const business=ownedBusinesses.find(b=>b.id===post.businessId);if(!business)throw new Error('Choose a business owned by your account.');if(business.approval_status!=='approved')throw new Error('Your business must be approved before publishing.');const row=await persistPost({...post,businessId:business.id});post={...post,id:row.id,businessId:business.id,businessName:business.name}
     setRemotePosts(state=>[post,...state]);
     setCreatedPosts((state) => {
       const nextPosts = [post, ...state]
       window.localStorage.setItem(POSTS_STORAGE_KEY, JSON.stringify(nextPosts))
       return nextPosts
     })
+    return post
   }
 
   return (
     <Routes>
-      <Route path="/admin" element={<AdminPage/>}/>
-      <Route path="/business/status" element={<BusinessReviewStatus business={savedBusiness}/>}/>
+      <Route path="/admin" element={<Navigate to="/admin/verify-businesses" replace/>}/>
+      <Route path="/admin/verify-businesses" element={<CampusFeed posts={posts} businesses={businesses} page={<AdminPage/>}/>}/>
+      <Route path="/admin/verified-list" element={<CampusFeed posts={posts} businesses={businesses} page={<AdminPage view="reference"/>}/>}/>
+      <Route path="/admin/review-history" element={<CampusFeed posts={posts} businesses={businesses} page={<AdminHistory/>}/>}/>
+      <Route path="/businesses/mine" element={currentUser()?<MyBusinesses businesses={ownedBusinesses} loading={!ownedLoaded} error={ownedError}/>:<Navigate to="/login" replace/>}/>
+      <Route path="/business/new" element={currentUser()?<BusinessSetup key="new-business" currentBusiness={null} onSave={saveBusiness}/>:<Navigate to="/login?role=business" replace/>}/>
+      <Route path="/business/status" element={<BusinessReviewStatus business={activeBusiness}/>}/>
       {['/posts/manage','/posts/:postId/edit'].map(path=><Route key={path} path={path} element={<ManagePosts onUpdated={row=>{const change=(p:Post)=>p.id===row.id?{...p,...row,category:row.category as Category,imageUrl:row.image_url}:p;setRemotePosts(state=>state.map(change));setCreatedPosts(state=>{const next=state.map(change);localStorage.setItem(POSTS_STORAGE_KEY,JSON.stringify(next));return next})}}/>}/>)}
       <Route path="/" element={<Welcome />} />
       <Route path="/login" element={<AccountAccess mode="login" />} />
@@ -1006,10 +1022,10 @@ export default function App() {
       <Route path="/search" element={<Navigate to={'/explore'+routeLocation.search} replace/>}/>
       {['/explore','/notifications','/saved','/following'].map(path=><Route key={path} path={path} element={<CampusFeed posts={posts} businesses={businesses} businessReview={savedBusiness}/>} />)}
       <Route path="/feed" element={<CampusFeed posts={posts} businesses={businesses} businessReview={savedBusiness} />} />
-      <Route path="/posts/new" element={!currentUser() ? <Navigate to="/login?role=business" replace /> : !savedBusiness ? <Navigate to="/business/setup" replace /> : savedBusiness.approval_status!=='approved' ? <Navigate to="/business/status" replace/> : <CreatePost business={savedBusiness} onPublish={publishPost} />} />
+      <Route path="/posts/new" element={!currentUser()?<Navigate to="/login" replace/>:!ownedLoaded?<p role="status">Loading your businesses…</p>:ownedError?<p role="alert">{ownedError}</p>:selectedBusinessId&&!ownedBusinesses.some(b=>b.id===selectedBusinessId)?<Navigate to="/businesses/mine" replace/>:!ownedBusinesses.length?<Navigate to="/business/new" replace/>:!selectedBusinessId&&ownedBusinesses.length>1?<ChoosePostBusiness businesses={ownedBusinesses}/>:activeBusiness?.approval_status!=='approved'?<Navigate to={'/business/status?business='+activeBusiness?.id} replace/>:<CreatePost key={activeBusiness.id} business={activeBusiness} onPublish={publishPost}/>} />
       <Route path="/posts/:postId" element={<PostDetails posts={posts} businesses={businesses} />} />
       <Route path="/businesses/:businessId" element={<BusinessProfile businesses={businesses} posts={posts} />} />
-      <Route path="/business/setup" element={currentUser() ? <BusinessSetup currentBusiness={savedBusiness} onSave={saveBusiness} /> : <Navigate to="/login?role=business" replace />} />
+      <Route path="/business/setup" element={!currentUser()?<Navigate to="/login" replace/>:!ownedLoaded?<p role="status">Loading your businesses…</p>:ownedError?<p role="alert">{ownedError}</p>:!selectedBusinessId?<Navigate to={ownedBusinesses.length?'/businesses/mine':'/business/new'} replace/>:!ownedBusinesses.some(b=>b.id===selectedBusinessId)?<Navigate to="/businesses/mine" replace/>:<BusinessSetup key={selectedBusinessId} currentBusiness={ownedBusinesses.find(b=>b.id===selectedBusinessId)!} onSave={saveBusiness}/>} />
       <Route path="*" element={<ScreenHandoff title="Let’s get you back on campus." owner="the team" />} />
     </Routes>
   )

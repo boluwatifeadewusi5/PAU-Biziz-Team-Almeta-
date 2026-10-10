@@ -11,11 +11,15 @@ async function request(table:string,method='GET',body?:unknown,query=''){
 export const listBusinesses=()=>request('businesses')
 export async function listOwnedBusinesses(){const session=await getSession();return session?request('businesses','GET',undefined,`?owner_id=eq.${encodeURIComponent(session.user.id)}&order=created_at.desc`):[]}
 export const listPosts=()=>request('posts','GET',undefined,'?order=created_at.desc')
-export async function persistBusiness(b:{id:string;name:string;description:string;category:string;whatsapp:string;logoUrl:string}){
+export async function persistBusiness(b:{id:string;name:string;description:string;category:string;whatsapp:string;logoUrl:string},options:{createNew?:boolean}={}){
  const session=await getSession();if(!session?.user)throw new Error('Please log in to set up your business.')
  const data={owner_id:session.user.id,name:b.name,description:b.description,category:b.category,whatsapp:b.whatsapp,logo_url:b.logoUrl}
  let id=b.id
- if(id==='my-business'){
+ if(id==='my-business'&&options.createNew){
+  const sameName=await request('businesses','GET',undefined,`?owner_id=eq.${encodeURIComponent(session.user.id)}&name=eq.${encodeURIComponent(b.name.trim())}&select=id&limit=1`)
+  if(sameName[0])throw new Error('You already own a business with this name. Open My businesses to edit it.')
+ }
+ if(id==='my-business'&&!options.createNew){
   const existing=await request('businesses','GET',undefined,`?owner_id=eq.${encodeURIComponent(session.user.id)}&select=id&order=created_at.desc&limit=1`)
   if(existing[0])id=existing[0].id
  }

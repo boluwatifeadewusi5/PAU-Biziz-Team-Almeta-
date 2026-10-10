@@ -13,3 +13,7 @@ Admin authorization comes from a protected `admin_members` table; user-editable 
 The public publishable key cannot apply migrations or grant admin privileges. Until the SQL is applied, the application fails closed for approval and publishing. Do not rerun the original schema policies after this migration; they would restore the old unrestricted read policies.
 
 Optional database integration verification: run `supabase/check-business-approval.sql` after activating the admin. It creates transactional fixtures and rolls back all writes. It checks owner/admin authorization, pending publishing restrictions, public visibility, review audit records, stale decisions, and resubmission. These checks have not been run against production until the migration is applied.
+
+Students keep a single authentication account and email while owning any number of businesses. `/businesses/mine` lists their businesses; `/business/new` creates an additional application. Existing profiles are edited via `/business/setup?business=<id>`. Offers use the selected owned business, and each business is approved separately. New business creation does not change the student's profile or sign-in role. No additional schema migration is needed for multiple ownership: `businesses.owner_id` already supports multiple rows.
+
+Admin workspace: `/admin/verify-businesses`, `/admin/verified-list`, and `/admin/review-history`, with active links in the campus sidebar and mobile workspace navigation.

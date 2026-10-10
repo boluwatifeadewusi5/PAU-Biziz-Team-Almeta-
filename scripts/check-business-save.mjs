@@ -19,4 +19,6 @@ const existing=await scenario([{id:'existing-id'}]);await existing.save(business
 const edit=await scenario();await edit.save({...business,id:'existing-id'});assert.equal(edit.calls.length,1);assert.equal(edit.calls[0].method,'PATCH')
 const unauthorized=await scenario([],null);await assert.rejects(()=>unauthorized.save(business),/log in/);assert.equal(unauthorized.calls.length,0)
 const noSave=await scenario([],undefined,[]);await assert.rejects(()=>noSave.save(business),/No business was saved/)
-console.log('Passed: create, update, duplicate prevention, signed-out rejection, and empty-save error.')
+const additional=await scenario();await additional.save({...business,name:'Second business'},{createNew:true});assert.equal(additional.calls.at(-1).method,'POST');assert.ok(additional.calls[0].url.includes('name=eq.Second%20business'));assert.equal(JSON.parse(additional.calls.at(-1).body).owner_id,'owner-1')
+const duplicate=await scenario([{id:'already-owned'}]);await assert.rejects(()=>duplicate.save(business,{createNew:true}),/already own/);assert.equal(duplicate.calls.length,1)
+console.log('Passed: create, update, duplicate prevention, signed-out rejection, empty-save error, additional business under the same owner, and duplicate-name rejection.')
