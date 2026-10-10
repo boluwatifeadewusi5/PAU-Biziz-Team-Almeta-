@@ -564,7 +564,7 @@ function PostDetails({ posts, businesses }: { posts: Post[]; businesses: Busines
               <p>{post.availability}</p>
             </div>
           </div>
-          {post.isDirectory?<p className="directory-source">PAU campus directory · Owner: {business?.ownerName}</p>:<SocialActions postId={post.id}/>}
+          {post.isDirectory&&<p className="directory-source">PAU campus directory · Owner: {business?.ownerName}</p>}<SocialActions postId={post.id}/>
           <section className="seller-card">
             <h2>Seller information</h2>
             <p>
