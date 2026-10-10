@@ -1,3 +1,4 @@
+import { categoryImage } from './media'
 import ProfileEditor from './ProfileEditor'
 import { prepareImage } from './images'
 import { backendReady, currentUser } from './auth'
@@ -86,7 +87,7 @@ const sampleBusinesses: Business[] = [
     whatsapp: '',
     email: '',
     location: 'Main Cafeteria Walkway, PAU',
-    logoUrl: 'https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=200&q=80',
+    logoUrl: 'https://images.unsplash.com/photo-1464305795204-6f5bbfc7fb81?auto=format&fit=crop&w=200&q=80',
   },
   {
     id: 'campus-cuts',
@@ -96,7 +97,7 @@ const sampleBusinesses: Business[] = [
     whatsapp: '',
     email: '',
     location: 'Hostel Square, PAU',
-    logoUrl: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=200&q=80',
+    logoUrl: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=200&q=80',
   },
   {
     id: 'laptop-fixers',
@@ -129,7 +130,7 @@ const samplePosts: Post[] = [
     title: 'Off-campus transportation',
     description: 'Explore off-campus transportation with Aleftav Shuttle. Request current routes and pickup information from the business owner.',
     category: 'Transport',
-    imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1200&q=80',
     price: undefined,
     availability: 'Contact owner for current schedule',
   },
@@ -640,6 +641,7 @@ function BusinessProfile({ businesses, posts }: { businesses: Business[]; posts:
 }
 
 function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Business) => void; currentBusiness: Business | null }) {
+  const navigate = useNavigate()
   const [draft, setDraft] = useState<BusinessDraft>({
     name: currentBusiness?.name || '',
     description: currentBusiness?.description || '',
@@ -696,12 +698,13 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
       whatsapp: draft.whatsapp.trim(),
       email: '',
       location: 'PAU campus',
-      logoUrl: savedLogo || 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&w=200&q=80',
+      logoUrl: savedLogo || categoryImage(draft.category,200),
     }
 
     try { await onSave(savedBusiness) } catch(error) { setErrors({name: error instanceof Error ? error.message : 'Unable to save'}); setIsSaving(false); return }
     setIsSaving(false)
     setIsSaved(true)
+    navigate('/feed', {replace:true})
   }
 
   return (
@@ -767,7 +770,7 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
           </button>
         </form>
 
-        {isSaved ? <p className="success-pill">Business profile saved. <Link to="/posts/new">Create your first post →</Link></p> : null}
+        {isSaved ? <p className="success-pill">Business profile saved. <Link to="/feed">Go to feed →</Link></p> : null}
       </section>
     </main>
   )
@@ -956,7 +959,7 @@ export default function App() {
   const [remoteBusinesses, setRemoteBusinesses] = useState<Business[]>([])
   const [remotePosts, setRemotePosts] = useState<Post[]>([])
   useEffect(() => { if (!backendReady) return; Promise.all([listBusinesses(),listPosts()]).then(([bs,ps])=>{
-    const mapped=bs.map((b:any)=>({...b,logoUrl:b.logo_url,email:'',location:'PAU campus'}));setRemoteBusinesses(mapped);
+    const mapped=bs.map((b:any)=>({...b,logoUrl:!b.logo_url || b.logo_url.includes('photo-1556157382-97eda2d62296') ? categoryImage(b.category,200) : b.logo_url,email:'',location:'PAU campus'}));setRemoteBusinesses(mapped);
     setRemotePosts(ps.map((p:any)=>({...p,businessId:p.business_id,businessName:mapped.find((b:Business)=>b.id===p.business_id)?.name||'Campus business',imageUrl:p.image_url})));
     const session=JSON.parse(localStorage.getItem('biziz-session')||'null');const mine=mapped.find((b:any)=>b.owner_id===session?.user?.id);setSavedBusiness(mine || null)
   }).catch(()=>{}); }, [routeLocation.pathname])
@@ -999,5 +1002,7 @@ export default function App() {
     </Routes>
   )
 }
+
+
 
 
