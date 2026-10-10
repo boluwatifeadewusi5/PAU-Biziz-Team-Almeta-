@@ -1,4 +1,7 @@
 export function categoryImage(category:string,width=900){
+ if(category==='Food & drinks')return '/images/nigeria-food.svg'
+ if(category==='Transport')return '/images/lagos-shuttle.svg'
+ if(category==='Tech & services'||category==='Other')return '/images/campus-tech.svg'
  const photos:Record<string,string>={
   'Food & drinks':'photo-1464305795204-6f5bbfc7fb81',
   Transport:'photo-1544620347-c4fd4a3d5957',

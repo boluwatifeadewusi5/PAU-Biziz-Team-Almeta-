@@ -1,3 +1,5 @@
+import CampusImage from './CampusImage'
+import SocialActions from './SocialActions'
 import { categoryImage } from './media'
 import ProfileEditor from './ProfileEditor'
 import { prepareImage } from './images'
@@ -439,7 +441,7 @@ function Feed({ posts, businesses }: { posts: Post[]; businesses: Business[] }) 
           <div className="post-grid">
             {filteredPosts.map((post) => (
               <article key={post.id} className="post-card">
-                <img src={sanitizeImageUrl(post.imageUrl)} alt={post.title} />
+                <CampusImage category={post.category} src={sanitizeImageUrl(post.imageUrl)} alt={post.title} />
                 <div className="post-card-body">
                   <small>{post.category}</small>
                   <h3>{post.title}</h3>
@@ -472,7 +474,7 @@ function Feed({ posts, businesses }: { posts: Post[]; businesses: Business[] }) 
           <div className="business-list">
             {businesses.map((business) => (
               <Link key={business.id} to={`/businesses/${business.id}`} className="business-list-item">
-                <img src={sanitizeImageUrl(business.logoUrl)} alt={`${business.name} logo`} />
+                <CampusImage category={business.category} src={sanitizeImageUrl(business.logoUrl)} alt={`${business.name} logo`} />
                 <span>
                   <strong>{business.name}</strong>
                   <small>{business.category}</small>
@@ -532,7 +534,7 @@ function PostDetails({ posts, businesses }: { posts: Post[]; businesses: Busines
     <main className="route-shell post-details-shell">
       <Brand />
       <article className="surface-card post-details-card">
-        <img src={sanitizeImageUrl(post.imageUrl)} alt={post.title} className="detail-image" />
+        <CampusImage category={post.category} src={sanitizeImageUrl(post.imageUrl)} alt={post.title} className="detail-image" />
         <div className="detail-content">
           <small>{post.category}</small>
           <h1>{post.title}</h1>
@@ -547,6 +549,7 @@ function PostDetails({ posts, businesses }: { posts: Post[]; businesses: Busines
               <p>{post.availability}</p>
             </div>
           </div>
+          <SocialActions postId={post.id}/>
           <section className="seller-card">
             <h2>Seller information</h2>
             <p>
@@ -600,7 +603,7 @@ function BusinessProfile({ businesses, posts }: { businesses: Business[]; posts:
       <Brand />
       <section className="surface-card profile-card">
         <div className="profile-header">
-          <img src={sanitizeImageUrl(business.logoUrl)} alt={`${business.name} logo`} />
+          <CampusImage category={business.category} src={sanitizeImageUrl(business.logoUrl)} alt={`${business.name} logo`} />
           <div>
             <small>{business.category}</small>
             <h1>{business.name}</h1>
@@ -620,7 +623,7 @@ function BusinessProfile({ businesses, posts }: { businesses: Business[]; posts:
           <div className="profile-posts">
             {businessPosts.map((post) => (
               <Link key={post.id} to={`/posts/${post.id}`} className="profile-post-item">
-                <img src={sanitizeImageUrl(post.imageUrl)} alt={post.title} />
+                <CampusImage category={post.category} src={sanitizeImageUrl(post.imageUrl)} alt={post.title} />
                 <span>
                   <strong>{post.title}</strong>
                   <small>{post.price || 'Price on request'} · {post.availability}</small>
@@ -763,7 +766,7 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
           <label htmlFor="business-logo-file">Or upload logo (optional)</label>
           <input id="business-logo-file" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { void handleFileChange(event.target.files?.[0] || null).catch(error => setErrors({image: error.message, name:error.message})); }} />
 
-          {logoPreview ? <><img className="image-preview" src={sanitizeImageUrl(logoPreview)} alt="Business logo preview" /><button type="button" className="button secondary" onClick={()=>{setLogoPreview('');setLogoFile(null);update('logoUrl','')}}>Remove logo</button></> : null}
+          {logoPreview ? <><CampusImage className="image-preview" src={sanitizeImageUrl(logoPreview)} alt="Business logo preview" /><button type="button" className="button secondary" onClick={()=>{setLogoPreview('');setLogoFile(null);update('logoUrl','')}}>Remove logo</button></> : null}
 
           <button className="button primary" disabled={isSaving}>
             {isSaving ? 'Saving profile...' : 'Save business profile'}
@@ -799,6 +802,7 @@ function CreatePost({ onPublish, business }: { onPublish: (post: Post) => void; 
     if (!draft.title.trim()) nextErrors.title = 'Post title is required.'
     if (!draft.description.trim()) nextErrors.description = 'Post description is required.'
     if (!draft.availability.trim()) nextErrors.availability = 'Please describe availability.'
+    if(draft.imageUrl.trim()){try{if(new URL(draft.imageUrl.trim()).pathname==='/' )nextErrors.image='Use a direct image link, not a website homepage, or upload your photo.'}catch{nextErrors.image='Enter a valid image URL or upload a photo.'}}
     if (!imagePreview && !draft.imageUrl.trim()) nextErrors.image = 'Add an image URL or upload a file.'
     return nextErrors
   }
@@ -921,7 +925,7 @@ function CreatePost({ onPublish, business }: { onPublish: (post: Post) => void; 
           <h2>Preview</h2>
           <div className="preview-card">
             {imagePreview || draft.imageUrl ? (
-              <img src={sanitizeImageUrl(imagePreview || draft.imageUrl)} alt="Post preview" className="detail-image" />
+              <CampusImage src={sanitizeImageUrl(imagePreview || draft.imageUrl)} alt="Post preview" className="detail-image" />
             ) : (
               <div className="preview-placeholder">Image preview appears here</div>
             )}
@@ -959,7 +963,7 @@ export default function App() {
   const [remoteBusinesses, setRemoteBusinesses] = useState<Business[]>([])
   const [remotePosts, setRemotePosts] = useState<Post[]>([])
   useEffect(() => { if (!backendReady) return; Promise.all([listBusinesses(),listPosts()]).then(([bs,ps])=>{
-    const mapped=bs.map((b:any)=>({...b,logoUrl:!b.logo_url || b.logo_url.includes('photo-1556157382-97eda2d62296') ? categoryImage(b.category,200) : b.logo_url,email:'',location:'PAU campus'}));setRemoteBusinesses(mapped);
+    const preferred=bs.filter((b:any)=>!bs.some((other:any)=>other.id!==b.id&&other.owner_id===b.owner_id&&other.name.trim().toLowerCase()===b.name.trim().toLowerCase()&&ps.some((p:any)=>p.business_id===other.id)&&!ps.some((p:any)=>p.business_id===b.id)));const mapped=preferred.map((b:any)=>({...b,logoUrl:!b.logo_url || b.logo_url.includes('photo-1556157382-97eda2d62296') ? categoryImage(b.category,200) : b.logo_url,email:'',location:'PAU campus'}));setRemoteBusinesses(mapped);
     setRemotePosts(ps.map((p:any)=>({...p,businessId:p.business_id,businessName:mapped.find((b:Business)=>b.id===p.business_id)?.name||'Campus business',imageUrl:p.image_url})));
     const session=JSON.parse(localStorage.getItem('biziz-session')||'null');const mine=mapped.find((b:any)=>b.owner_id===session?.user?.id);setSavedBusiness(mine || null)
   }).catch(()=>{}); }, [routeLocation.pathname])
@@ -969,7 +973,7 @@ export default function App() {
     return [savedBusiness, ...remoteBusinesses.filter(b=>b.id!==savedBusiness.id), ...rest]
   }, [savedBusiness, remoteBusinesses])
 
-  const posts = useMemo(() => [...createdPosts, ...remotePosts, ...samplePosts], [createdPosts, remotePosts])
+  const posts = useMemo(() => Array.from(new Map([...samplePosts,...remotePosts,...createdPosts].map(p=>[p.id,p])).values()).reverse(), [createdPosts, remotePosts])
 
   const saveBusiness = async (business: Business) => {
     const row = await persistBusiness(business); business = {...business,id:row.id}
@@ -1002,6 +1006,7 @@ export default function App() {
     </Routes>
   )
 }
+
 
 
 
