@@ -623,7 +623,7 @@ function BusinessProfile({ businesses, posts }: { businesses: Business[]; posts:
           <CampusImage category={business.category} src={sanitizeImageUrl(business.logoUrl)} alt={`${business.name} logo`} />
           <div>
             <small>{business.category}</small>
-            <h1>{business.name}</h1>
+            <h1>{business.name}</h1>{business.approval_status==='approved'&&<span className="approval-badge approved">✓ Approved business</span>}
             <p>{business.description}</p>{business.isDirectory&&<p className="directory-source">PAU campus directory · {business.ownerName}</p>}
           </div>
         </div>
@@ -974,6 +974,8 @@ function ScreenHandoff({ title, owner }: { title: string; owner: string }) {
 
 export default function App() {
   const routeLocation = useLocation()
+  const [businessRevision,setBusinessRevision]=useState(0)
+  useEffect(()=>{const refresh=()=>setBusinessRevision(n=>n+1);window.addEventListener('biziz-business-updated',refresh);window.addEventListener('focus',refresh);return()=>{window.removeEventListener('biziz-business-updated',refresh);window.removeEventListener('focus',refresh)}},[])
   const selectedBusinessId=new URLSearchParams(routeLocation.search).get('business')
   const [ownedBusinesses,setOwnedBusinesses]=useState<Business[]>([])
   const [ownedLoaded,setOwnedLoaded]=useState(false)
@@ -987,7 +989,7 @@ export default function App() {
     const visible=bs.filter((b:any)=>b.approval_status==='approved');const preferred=visible.filter((b:any)=>!visible.some((other:any)=>other.id!==b.id&&other.owner_id===b.owner_id&&other.name.trim().toLowerCase()===b.name.trim().toLowerCase()&&ps.some((p:any)=>p.business_id===other.id)&&!ps.some((p:any)=>p.business_id===b.id)));const mapped=preferred.map((b:any)=>({...b,logoUrl:!b.logo_url || b.logo_url.includes('photo-1556157382-97eda2d62296') ? categoryImage(b.category,200) : b.logo_url,email:'',location:'PAU campus'}));setRemoteBusinesses(mapped);
     setRemotePosts(ps.filter((p:any)=>mapped.some((b:Business)=>b.id===p.business_id)).map((p:any)=>({...p,businessId:p.business_id,businessName:mapped.find((b:Business)=>b.id===p.business_id)?.name||'Campus business',imageUrl:p.image_url})));
     const session=JSON.parse(localStorage.getItem('biziz-session')||'null');const ownedMapped=owned.map((b:any)=>({...b,logoUrl:b.logo_url||categoryImage(b.category,200),email:'',location:'PAU campus'}));setOwnedBusinesses(ownedMapped);setOwnedLoaded(true);setOwnedError('');const mine=owned.find((b:any)=>b.id===selectedBusinessId)||owned.find((b:any)=>b.owner_id===session?.user?.id&&ps.some((p:any)=>p.business_id===b.id))||owned.find((b:any)=>b.owner_id===session?.user?.id);setSavedBusiness(mine?{...mine,logoUrl:mine.logo_url||categoryImage(mine.category,200),email:'',location:'PAU campus'}:null)
-  }).catch(e=>{setOwnedLoaded(true);setOwnedError(e.message||'Unable to load your businesses.');}); }, [routeLocation.pathname,selectedBusinessId])
+  }).catch(e=>{setOwnedLoaded(true);setOwnedError(e.message||'Unable to load your businesses.');}); }, [routeLocation.pathname,selectedBusinessId,businessRevision])
   const activeBusiness=selectedBusinessId?ownedBusinesses.find(b=>b.id===selectedBusinessId)||null:savedBusiness
   const businesses = useMemo(() => mergeDirectory(remoteBusinesses,directoryBusinesses),[remoteBusinesses])
   const posts = useMemo(() => [...remotePosts,...directoryPosts.filter(p=>businesses.some(b=>b.id===p.businessId))],[remotePosts,businesses])
