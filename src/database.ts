@@ -9,6 +9,7 @@ async function request(table:string,method='GET',body?:unknown,query=''){
  const result=await response.json();if(!response.ok)throw new Error(result.message||'Unable to save. Please try again.');return result
 }
 export const listBusinesses=()=>request('businesses')
+export async function listOwnedBusinesses(){const session=await getSession();return session?request('businesses','GET',undefined,`?owner_id=eq.${encodeURIComponent(session.user.id)}&order=created_at.desc`):[]}
 export const listPosts=()=>request('posts','GET',undefined,'?order=created_at.desc')
 export async function persistBusiness(b:{id:string;name:string;description:string;category:string;whatsapp:string;logoUrl:string}){
  const session=await getSession();if(!session?.user)throw new Error('Please log in to set up your business.')

@@ -1,10 +1,12 @@
+import AdminPage from './AdminPage'
+import BusinessReviewStatus from './BusinessReviewStatus'
 import CampusImage from './CampusImage'
 import SocialActions from './SocialActions'
 import { categoryImage } from './media'
 import ProfileEditor from './ProfileEditor'
 import { prepareImage } from './images'
 import { backendReady, currentUser } from './auth'
-import { listBusinesses, listPosts, persistBusiness, persistPost } from './database'
+import { listBusinesses, listOwnedBusinesses, listPosts, persistBusiness, persistPost } from './database'
 import ManagePosts from './ManagePosts'
 import CampusFeed from './CampusFeed'
 import { AccountAccess, Account } from './AccountScreens'
@@ -45,6 +47,8 @@ type Business = {
   email: string
   location: string
   logoUrl: string
+  approval_status?: 'pending'|'approved'|'rejected'
+  review_note?: string
 }
 
 type Post = {
@@ -710,7 +714,7 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
     try { await onSave(savedBusiness) } catch(error) { setErrors({name: error instanceof Error ? error.message : 'Unable to save'}); setIsSaving(false); return }
     setIsSaving(false)
     setIsSaved(true)
-    navigate('/feed', {replace:true})
+    navigate('/business/status', {replace:true})
   }
 
   return (
@@ -719,7 +723,7 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
       <section className="surface-card form-card">
         <span className="eyebrow route-eyebrow">BUSINESS SETUP</span>
         <h1>{currentBusiness ? 'Edit your business profile' : 'Set up your business profile'}</h1>
-        <p>Introduce your business to the PAU community.</p>
+        <p>Submit your business for review against PAU’s verified student-business list. Approved businesses can publish offers. Changes to your business details require another review.</p>{currentBusiness&&<p className="review-note">Status: {currentBusiness.approval_status||'pending'}{currentBusiness.review_note?` · ${currentBusiness.review_note}`:''}</p>}
 
         <form className="stack-form" onSubmit={submit} noValidate>
           <label htmlFor="business-name">Business name</label>
@@ -772,7 +776,7 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
           {logoPreview ? <><CampusImage className="image-preview" src={sanitizeImageUrl(logoPreview)} alt="Business logo preview" /><button type="button" className="button secondary" onClick={()=>{setLogoPreview('');setLogoFile(null);update('logoUrl','')}}>Remove logo</button></> : null}
 
           <button className="button primary" disabled={isSaving}>
-            {isSaving ? 'Saving profile...' : 'Save business profile'}
+            {isSaving ? 'Submitting...' : 'Submit business for review'}
           </button>
         </form>
 
@@ -965,27 +969,23 @@ export default function App() {
 
   const [remoteBusinesses, setRemoteBusinesses] = useState<Business[]>([])
   const [remotePosts, setRemotePosts] = useState<Post[]>([])
-  useEffect(() => { if (!backendReady) return; Promise.all([listBusinesses(),listPosts()]).then(([bs,ps])=>{
-    const preferred=bs.filter((b:any)=>!bs.some((other:any)=>other.id!==b.id&&other.owner_id===b.owner_id&&other.name.trim().toLowerCase()===b.name.trim().toLowerCase()&&ps.some((p:any)=>p.business_id===other.id)&&!ps.some((p:any)=>p.business_id===b.id)));const mapped=preferred.map((b:any)=>({...b,logoUrl:!b.logo_url || b.logo_url.includes('photo-1556157382-97eda2d62296') ? categoryImage(b.category,200) : b.logo_url,email:'',location:'PAU campus'}));setRemoteBusinesses(mapped);
-    setRemotePosts(ps.map((p:any)=>({...p,businessId:p.business_id,businessName:mapped.find((b:Business)=>b.id===p.business_id)?.name||'Campus business',imageUrl:p.image_url})));
-    const session=JSON.parse(localStorage.getItem('biziz-session')||'null');const mine=mapped.find((b:any)=>b.owner_id===session?.user?.id);setSavedBusiness(mine || null)
+  useEffect(() => { if (!backendReady) return; Promise.all([listBusinesses(),listPosts(),listOwnedBusinesses()]).then(([bs,ps,owned])=>{
+    const visible=bs.filter((b:any)=>b.approval_status==='approved');const preferred=visible.filter((b:any)=>!visible.some((other:any)=>other.id!==b.id&&other.owner_id===b.owner_id&&other.name.trim().toLowerCase()===b.name.trim().toLowerCase()&&ps.some((p:any)=>p.business_id===other.id)&&!ps.some((p:any)=>p.business_id===b.id)));const mapped=preferred.map((b:any)=>({...b,logoUrl:!b.logo_url || b.logo_url.includes('photo-1556157382-97eda2d62296') ? categoryImage(b.category,200) : b.logo_url,email:'',location:'PAU campus'}));setRemoteBusinesses(mapped);
+    setRemotePosts(ps.filter((p:any)=>mapped.some((b:Business)=>b.id===p.business_id)).map((p:any)=>({...p,businessId:p.business_id,businessName:mapped.find((b:Business)=>b.id===p.business_id)?.name||'Campus business',imageUrl:p.image_url})));
+    const session=JSON.parse(localStorage.getItem('biziz-session')||'null');const mine=owned.find((b:any)=>b.owner_id===session?.user?.id&&ps.some((p:any)=>p.business_id===b.id))||owned.find((b:any)=>b.owner_id===session?.user?.id);setSavedBusiness(mine?{...mine,logoUrl:mine.logo_url||categoryImage(mine.category,200),email:'',location:'PAU campus'}:null)
   }).catch(()=>{}); }, [routeLocation.pathname])
-  const businesses = useMemo(() => {
-    if (!savedBusiness) return [...remoteBusinesses, ...sampleBusinesses]
-    const rest = sampleBusinesses.filter((business) => business.id !== MY_BUSINESS_ID)
-    return [savedBusiness, ...remoteBusinesses.filter(b=>b.id!==savedBusiness.id), ...rest]
-  }, [savedBusiness, remoteBusinesses])
-
-  const posts = useMemo(() => Array.from(new Map([...samplePosts,...remotePosts,...createdPosts].map(p=>[p.id,p])).values()).reverse(), [createdPosts, remotePosts])
+  const businesses = useMemo(() => backendReady?remoteBusinesses:sampleBusinesses,[remoteBusinesses])
+  const posts = useMemo(() => backendReady?remotePosts:samplePosts,[remotePosts])
 
   const saveBusiness = async (business: Business) => {
-    const row = await persistBusiness(business); business = {...business,id:row.id}
+    const row = await persistBusiness(business); business = {...business,id:row.id,approval_status:row.approval_status,review_note:row.review_note}
     setSavedBusiness(business)
     window.localStorage.setItem(BUSINESS_STORAGE_KEY, JSON.stringify(business))
   }
 
   const publishPost = async (post: Post) => {
-    if (!savedBusiness) throw new Error('Set up your business before publishing.'); const row = await persistPost({...post,businessId:savedBusiness.id}); post = {...post,id:row.id,businessId:savedBusiness.id,businessName:savedBusiness.name}
+    if (!savedBusiness) throw new Error('Set up your business before publishing.');if(savedBusiness.approval_status!=='approved')throw new Error('Your business must be approved before publishing.'); const row = await persistPost({...post,businessId:savedBusiness.id}); post = {...post,id:row.id,businessId:savedBusiness.id,businessName:savedBusiness.name}
+    setRemotePosts(state=>[post,...state]);
     setCreatedPosts((state) => {
       const nextPosts = [post, ...state]
       window.localStorage.setItem(POSTS_STORAGE_KEY, JSON.stringify(nextPosts))
@@ -995,6 +995,8 @@ export default function App() {
 
   return (
     <Routes>
+      <Route path="/admin" element={<AdminPage/>}/>
+      <Route path="/business/status" element={<BusinessReviewStatus business={savedBusiness}/>}/>
       {['/posts/manage','/posts/:postId/edit'].map(path=><Route key={path} path={path} element={<ManagePosts onUpdated={row=>{const change=(p:Post)=>p.id===row.id?{...p,...row,category:row.category as Category,imageUrl:row.image_url}:p;setRemotePosts(state=>state.map(change));setCreatedPosts(state=>{const next=state.map(change);localStorage.setItem(POSTS_STORAGE_KEY,JSON.stringify(next));return next})}}/>}/>)}
       <Route path="/" element={<Welcome />} />
       <Route path="/login" element={<AccountAccess mode="login" />} />
@@ -1002,9 +1004,9 @@ export default function App() {
       <Route path="/account" element={<Account />} />
       <Route path="/signup" element={<AccountAccess mode="signup" />} />
       <Route path="/search" element={<Navigate to={'/explore'+routeLocation.search} replace/>}/>
-      {['/explore','/notifications','/saved','/following'].map(path=><Route key={path} path={path} element={<CampusFeed posts={posts} businesses={businesses}/>} />)}
-      <Route path="/feed" element={<CampusFeed posts={posts} businesses={businesses} />} />
-      <Route path="/posts/new" element={!currentUser() ? <Navigate to="/login?role=business" replace /> : !savedBusiness ? <Navigate to="/business/setup" replace /> : <CreatePost business={savedBusiness} onPublish={publishPost} />} />
+      {['/explore','/notifications','/saved','/following'].map(path=><Route key={path} path={path} element={<CampusFeed posts={posts} businesses={businesses} businessReview={savedBusiness}/>} />)}
+      <Route path="/feed" element={<CampusFeed posts={posts} businesses={businesses} businessReview={savedBusiness} />} />
+      <Route path="/posts/new" element={!currentUser() ? <Navigate to="/login?role=business" replace /> : !savedBusiness ? <Navigate to="/business/setup" replace /> : savedBusiness.approval_status!=='approved' ? <Navigate to="/business/status" replace/> : <CreatePost business={savedBusiness} onPublish={publishPost} />} />
       <Route path="/posts/:postId" element={<PostDetails posts={posts} businesses={businesses} />} />
       <Route path="/businesses/:businessId" element={<BusinessProfile businesses={businesses} posts={posts} />} />
       <Route path="/business/setup" element={currentUser() ? <BusinessSetup currentBusiness={savedBusiness} onSave={saveBusiness} /> : <Navigate to="/login?role=business" replace />} />
