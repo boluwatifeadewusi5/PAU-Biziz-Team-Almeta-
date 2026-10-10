@@ -5,9 +5,11 @@ export const backendReady = Boolean(url && key)
 export const supabase = backendReady ? createClient(url!, key!, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit' } }) : null
 let activeSession: Session | null = null
 export function storeSession(session: Session | null) {
+ const changed = activeSession?.user.id !== session?.user.id
  activeSession = session
  if (session) localStorage.setItem('biziz-session', JSON.stringify(session))
  else localStorage.removeItem('biziz-session')
+ if(changed) window.dispatchEvent(new Event('biziz-auth-change'))
 }
 export async function getSession() {
  if (!supabase) return null

@@ -1,0 +1,17 @@
+import {useEffect,useState,type FormEvent} from 'react'
+import {Link} from 'react-router-dom'
+import {categories,request,mapPost} from './database'
+
+export default function OwnerDashboard(){
+ const [posts,setPosts]=useState<any[]>([]),[error,setError]=useState(''),[busy,setBusy]=useState(false),[editing,setEditing]=useState<any|null>(null)
+ const load=()=>request('/owner/posts').then(rows=>setPosts(rows.map(mapPost)))
+ useEffect(()=>{void load().catch(e=>setError(e.message))},[])
+ const payload=(p:any)=>({title:p.title,description:p.description,category:p.category,image_url:p.image_url,video_url:p.video_url,website_url:p.website_url,price_mode:p.price_mode,price_amount:p.price_amount,publication_status:p.publication_status})
+ async function change(p:any, publish=false){setBusy(true);setError('');try{
+  if(publish)await request(`/owner/posts/${p.id}`,'PUT',{...payload(p),publication_status:p.publication_status==='draft'?'published':'draft'})
+  else await request(`/owner/posts/${p.id}/availability`,'PATCH')
+  await load()
+ }catch(e){setError((e as Error).message)}finally{setBusy(false)}}
+ async function save(e:FormEvent){e.preventDefault();setBusy(true);setError('');try{await request(`/owner/posts/${editing.id}`,'PUT',payload(editing));await load();setEditing(null)}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
+ return <main className="route-shell"><Link to="/feed">← Feed</Link><section className="surface-card"><h1>My offers</h1><Link className="button primary" to="/posts/new">Create an offer</Link> <Link to="/business/setup">Edit business</Link>{error&&<p role="alert">{error}</p>}{editing&&<form className="stack-form" onSubmit={save}><h2>Edit offer</h2><label htmlFor="edit-title">Title</label><input id="edit-title" required value={editing.title} onChange={e=>setEditing({...editing,title:e.target.value})}/><label htmlFor="edit-description">Description</label><textarea id="edit-description" required value={editing.description} onChange={e=>setEditing({...editing,description:e.target.value})}/><label htmlFor="edit-category">Category</label><select id="edit-category" value={editing.category} onChange={e=>setEditing({...editing,category:e.target.value})}>{categories.map(c=><option key={c}>{c}</option>)}</select><label htmlFor="edit-price-mode">Price mode</label><select id="edit-price-mode" value={editing.price_mode} onChange={e=>setEditing({...editing,price_mode:e.target.value})}><option value="amount">NGN amount</option><option value="contact">Contact for price</option></select>{editing.price_mode==='amount'&&<><label htmlFor="edit-price">NGN price</label><input id="edit-price" type="number" min="0" step="0.01" required value={editing.price_amount??''} onChange={e=>setEditing({...editing,price_amount:e.target.value===''?null:Number(e.target.value)})}/></>}<button disabled={busy}>Save offer</button><button type="button" disabled={busy} onClick={()=>setEditing(null)}>Cancel</button></form>}{posts.map(p=><article key={p.id}><h2>{p.title}</h2><p>{p.price} · {p.publication_status} · {p.availability}</p><button disabled={busy} onClick={()=>setEditing({...p})}>Edit</button> <button disabled={busy} onClick={()=>void change(p)}>{p.availability==='available'?'Mark unavailable':'Mark available'}</button> <button disabled={busy} onClick={()=>void change(p,true)}>{p.publication_status==='draft'?'Publish':'Move to draft'}</button></article>)}{!posts.length&&!error&&<p>No offers yet.</p>}</section></main>
+}

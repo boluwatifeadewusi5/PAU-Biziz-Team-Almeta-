@@ -1,7 +1,9 @@
+import OwnerDashboard from './OwnerDashboard'
+import PostComments from './PostComments'
 import ProfileEditor from './ProfileEditor'
 import { prepareImage } from './images'
 import { backendReady, currentUser } from './auth'
-import { listBusinesses, listPosts, persistBusiness, persistPost } from './database'
+import { categories, listBusinesses, listPosts, getPost, getBusiness, ownerBusiness, persistBusiness, persistPost } from './database'
 import CampusFeed from './CampusFeed'
 import { AccountAccess, Account } from './AccountScreens'
 import './campus.css'
@@ -30,7 +32,7 @@ import {
 } from 'lucide-react'
 
 type Role = 'student' | 'business'
-type Category = 'Food & drinks' | 'Beauty & grooming' | 'Tech & services' | 'Fashion' | 'Academic support' | 'Wellness' | 'Transport' | 'Other'
+type Category = typeof categories[number]
 
 type Business = {
   id: string
@@ -38,6 +40,9 @@ type Business = {
   description: string
   category: Category
   whatsapp: string
+  websiteUrl?: string
+  whatsappLink?: string | null
+  websiteLink?: string | null
   email: string
   location: string
   logoUrl: string
@@ -53,6 +58,8 @@ type Post = {
   imageUrl: string
   price?: string
   availability: string
+  whatsappLink?: string | null
+  websiteLink?: string | null
 }
 
 type BusinessDraft = {
@@ -61,6 +68,7 @@ type BusinessDraft = {
   category: Category
   whatsapp: string
   logoUrl: string
+  websiteUrl: string
 }
 
 type CreatePostDraft = {
@@ -75,14 +83,14 @@ type CreatePostDraft = {
 const BUSINESS_STORAGE_KEY = 'pau-biziz-business'
 const POSTS_STORAGE_KEY = 'pau-biziz-created-posts'
 const MY_BUSINESS_ID = 'my-business'
-const CATEGORIES: Category[] = ['Food & drinks', 'Beauty & grooming', 'Tech & services', 'Fashion', 'Academic support', 'Wellness', 'Transport', 'Other']
+const CATEGORIES: Category[] = [...categories]
 
 const sampleBusinesses: Business[] = [
   {
     id: 'snack-hub',
     name: 'Sweet Discovery',
     description: 'Snacks for the PAU community. Business details are awaiting owner confirmation.',
-    category: 'Food & drinks',
+    category: 'Food',
     whatsapp: '',
     email: '',
     location: 'Main Cafeteria Walkway, PAU',
@@ -92,7 +100,7 @@ const sampleBusinesses: Business[] = [
     id: 'campus-cuts',
     name: 'Aleftav Shuttle',
     description: 'Off-campus transportation for the PAU community. Contact details and schedules will be added by the business owner.',
-    category: 'Transport',
+    category: 'Services',
     whatsapp: '',
     email: '',
     location: 'Hostel Square, PAU',
@@ -102,7 +110,7 @@ const sampleBusinesses: Business[] = [
     id: 'laptop-fixers',
     name: 'Laptop Fixers',
     description: 'Fast troubleshooting, software cleanup, and accessory recommendations by classmates.',
-    category: 'Tech & services',
+    category: 'Tech',
     whatsapp: '',
     email: '',
     location: 'Innovation Hub, PAU',
@@ -117,7 +125,7 @@ const samplePosts: Post[] = [
     businessName: 'Sweet Discovery',
     title: 'Breakfast Combo Box',
     description: 'Discover snacks from Sweet Discovery. Ask the owner about the current menu and availability.',
-    category: 'Food & drinks',
+    category: 'Food',
     imageUrl: 'https://images.unsplash.com/photo-1464305795204-6f5bbfc7fb81?auto=format&fit=crop&w=1200&q=80',
     price: undefined,
     availability: 'Ask owner for availability',
@@ -128,7 +136,7 @@ const samplePosts: Post[] = [
     businessName: 'Aleftav Shuttle',
     title: 'Off-campus transportation',
     description: 'Explore off-campus transportation with Aleftav Shuttle. Request current routes and pickup information from the business owner.',
-    category: 'Transport',
+    category: 'Services',
     imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1200&q=80',
     price: undefined,
     availability: 'Contact owner for current schedule',
@@ -139,7 +147,7 @@ const samplePosts: Post[] = [
     businessName: 'Laptop Fixers',
     title: 'Same-day Laptop Tune-up',
     description: 'Fan cleaning, software optimization, and battery check for Windows and Mac devices.',
-    category: 'Tech & services',
+    category: 'Tech',
     imageUrl: 'https://images.unsplash.com/photo-1517336714739-489689fd1ca8?auto=format&fit=crop&w=1200&q=80',
     price: '₦6,000',
     availability: 'Open for walk-ins',
@@ -147,9 +155,9 @@ const samplePosts: Post[] = [
 ]
 
 const discoveries = [
-  { name: 'Sweet Discovery', category: 'Food & drinks', title: 'Your next study-break craving.', icon: Coffee, style: 'food', label: 'Fresh on campus', price: 'Small bites. Big mood.' },
-  { name: 'Aleftav Shuttle', category: 'Transport', title: 'A fresh look, between lectures.', icon: Scissors, style: 'beauty', label: 'Made for your schedule', price: 'Your campus glow-up.' },
-  { name: 'Laptop Fixers', category: 'Tech & services', title: 'Back to work. Without the stress.', icon: Laptop, style: 'tech', label: 'Help, close to home', price: 'Good people. Smart fixes.' },
+  { name: 'Sweet Discovery', category: 'Food', title: 'Your next study-break craving.', icon: Coffee, style: 'food', label: 'Fresh on campus', price: 'Small bites. Big mood.' },
+  { name: 'Aleftav Shuttle', category: 'Services', title: 'A fresh look, between lectures.', icon: Scissors, style: 'beauty', label: 'Made for your schedule', price: 'Your campus glow-up.' },
+  { name: 'Laptop Fixers', category: 'Tech', title: 'Back to work. Without the stress.', icon: Laptop, style: 'tech', label: 'Help, close to home', price: 'Good people. Smart fixes.' },
 ]
 
 function readStoredBusiness(): Business | null {
@@ -557,11 +565,12 @@ function PostDetails({ posts, businesses }: { posts: Post[]; businesses: Busines
               <Link className="button secondary" to={`/businesses/${post.businessId}`}>
                 View business profile
               </Link>
-              <a className="button primary" aria-disabled={!business?.whatsapp} onClick={e=>{if(!business?.whatsapp)e.preventDefault()}} href={business?.whatsapp ? formatWhatsAppLink(business.whatsapp) : undefined} target="_blank" rel="noreferrer">
-                <Phone size={16} /> {business?.whatsapp ? 'Contact on WhatsApp' : 'Contact details coming soon'}
-              </a>
+              {post.whatsappLink && <a className="button primary" href={post.whatsappLink} target="_blank" rel="noreferrer">Contact on WhatsApp</a>}
+              {post.websiteLink && <a className="button primary" href={post.websiteLink} target="_blank" rel="noreferrer">Visit website</a>}
+              {post.availability === 'unavailable' && <p>This offer is unavailable.</p>}
             </div>
           </section>
+          <PostComments id={post.id} />
         </div>
       </article>
     </main>
@@ -607,9 +616,8 @@ function BusinessProfile({ businesses, posts }: { businesses: Business[]; posts:
           </div>
         </div>
         <div className="contact-row">
-          <a href={formatWhatsAppLink(business.whatsapp)} target="_blank" rel="noreferrer">
-            <Phone size={16} /> {business.whatsapp || 'Contact details coming soon'}
-          </a>
+          {business.whatsappLink && <a href={business.whatsappLink} target="_blank" rel="noreferrer">Contact on WhatsApp</a>}
+          {business.websiteLink && <a href={business.websiteLink} target="_blank" rel="noreferrer">Visit website</a>}
           <span>{business.email}</span>
           <span>{business.location}</span>
         </div>
@@ -643,9 +651,10 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
   const [draft, setDraft] = useState<BusinessDraft>({
     name: currentBusiness?.name || '',
     description: currentBusiness?.description || '',
-    category: currentBusiness?.category || 'Other',
+    category: currentBusiness?.category || 'Services',
     whatsapp: currentBusiness?.whatsapp || '',
     logoUrl: currentBusiness?.logoUrl || '',
+    websiteUrl: currentBusiness?.websiteUrl || '',
   })
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState(currentBusiness?.logoUrl || '')
@@ -653,7 +662,7 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
   const [isSaving, setIsSaving] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
 
-  useEffect(()=>{if(!currentBusiness)return;setDraft({name:currentBusiness.name,description:currentBusiness.description,category:currentBusiness.category,whatsapp:currentBusiness.whatsapp,logoUrl:currentBusiness.logoUrl});setLogoPreview(currentBusiness.logoUrl)},[currentBusiness?.id])
+  useEffect(()=>{if(!currentBusiness)return;setDraft({name:currentBusiness.name,description:currentBusiness.description,category:currentBusiness.category,whatsapp:currentBusiness.whatsapp,logoUrl:currentBusiness.logoUrl,websiteUrl:currentBusiness.websiteUrl||''});setLogoPreview(currentBusiness.logoUrl)},[currentBusiness?.id])
   const update = (key: keyof BusinessDraft, value: string) => {
     setDraft((state) => ({ ...state, [key]: value }))
     setIsSaved(false)
@@ -663,8 +672,8 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
     const nextErrors: Record<string, string> = {}
     if (!draft.name.trim()) nextErrors.name = 'Business name is required.'
     if (!draft.description.trim()) nextErrors.description = 'Please add a short business description.'
-    if (!draft.whatsapp.trim()) nextErrors.whatsapp = 'WhatsApp number is required for contact.'
-    else if (!/^[\d+\s-]{7,}$/.test(draft.whatsapp)) nextErrors.whatsapp = 'Please enter a valid WhatsApp number.'
+    if (!draft.whatsapp.trim() && !draft.websiteUrl.trim()) nextErrors.whatsapp = 'Add a WhatsApp number or website.'
+    else if (draft.whatsapp.trim() && !/^\+?[\d\s-]{10,}$/.test(draft.whatsapp)) nextErrors.whatsapp = 'Use a WhatsApp number with country code.'
     return nextErrors
   }
 
@@ -694,6 +703,7 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
       description: draft.description.trim(),
       category: draft.category,
       whatsapp: draft.whatsapp.trim(),
+      websiteUrl: draft.websiteUrl.trim(),
       email: '',
       location: 'PAU campus',
       logoUrl: savedLogo || 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&w=200&q=80',
@@ -745,6 +755,8 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
             aria-invalid={Boolean(errors.whatsapp)}
           />
           {errors.whatsapp ? <small className="field-error">{errors.whatsapp}</small> : null}
+          <label htmlFor="business-website">Website (optional)</label>
+          <input id="business-website" value={draft.websiteUrl} onChange={event=>update('websiteUrl',event.target.value)} placeholder="https://..."/>
 
           <label htmlFor="business-logo-url">Logo URL (optional)</label>
           <input
@@ -778,9 +790,9 @@ function CreatePost({ onPublish, business }: { onPublish: (post: Post) => void; 
   const [draft, setDraft] = useState<CreatePostDraft>({
     title: '',
     description: '',
-    category: business?.category || 'Other',
+    category: business?.category || 'Services',
     price: '',
-    availability: '',
+    availability: 'available',
     imageUrl: '',
   })
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -836,7 +848,7 @@ function CreatePost({ onPublish, business }: { onPublish: (post: Post) => void; 
     try { await onPublish(nextPost) } catch(error) { setErrors({title: error instanceof Error ? error.message : 'Unable to publish'}); setIsPublishing(false); return }
     setIsPublishing(false)
     setPublishedPost(nextPost)
-    setDraft({ title: '', description: '', category: business?.category || 'Other', price: '', availability: '', imageUrl: '' })
+    setDraft({ title: '', description: '', category: business?.category || 'Services', price: '', availability: '', imageUrl: '' })
     setImageFile(null)
     setImagePreview('')
   }
@@ -878,13 +890,7 @@ function CreatePost({ onPublish, business }: { onPublish: (post: Post) => void; 
             <input id="post-price" value={draft.price} onChange={(event) => update('price', event.target.value)} placeholder="e.g. ₦3,500" />
 
             <label htmlFor="post-availability">Availability</label>
-            <input
-              id="post-availability"
-              value={draft.availability}
-              onChange={(event) => update('availability', event.target.value)}
-              placeholder="e.g. Available weekdays from 2 p.m."
-              aria-invalid={Boolean(errors.availability)}
-            />
+            <select id="post-availability" value={draft.availability} onChange={event=>update('availability',event.target.value)}><option value="available">Available</option></select>
             {errors.availability ? <small className="field-error">{errors.availability}</small> : null}
 
             <label htmlFor="post-image-url">Image URL fallback</label>
@@ -949,55 +955,44 @@ function ScreenHandoff({ title, owner }: { title: string; owner: string }) {
 }
 
 export default function App() {
-  const routeLocation = useLocation()
-  const [savedBusiness, setSavedBusiness] = useState<Business | null>(() => readStoredBusiness())
-  const [createdPosts, setCreatedPosts] = useState<Post[]>(() => readStoredPosts())
-
-  const [remoteBusinesses, setRemoteBusinesses] = useState<Business[]>([])
-  const [remotePosts, setRemotePosts] = useState<Post[]>([])
-  useEffect(() => { if (!backendReady) return; Promise.all([listBusinesses(),listPosts()]).then(([bs,ps])=>{
-    const mapped=bs.map((b:any)=>({...b,logoUrl:b.logo_url,email:'',location:'PAU campus'}));setRemoteBusinesses(mapped);
-    setRemotePosts(ps.map((p:any)=>({...p,businessId:p.business_id,businessName:mapped.find((b:Business)=>b.id===p.business_id)?.name||'Campus business',imageUrl:p.image_url})));
-    const session=JSON.parse(localStorage.getItem('biziz-session')||'null');const mine=mapped.find((b:any)=>b.owner_id===session?.user?.id);setSavedBusiness(mine || null)
-  }).catch(()=>{}); }, [routeLocation.pathname])
-  const businesses = useMemo(() => {
-    if (!savedBusiness) return [...remoteBusinesses, ...sampleBusinesses]
-    const rest = sampleBusinesses.filter((business) => business.id !== MY_BUSINESS_ID)
-    return [savedBusiness, ...remoteBusinesses.filter(b=>b.id!==savedBusiness.id), ...rest]
-  }, [savedBusiness, remoteBusinesses])
-
-  const posts = useMemo(() => [...createdPosts, ...remotePosts, ...samplePosts], [createdPosts, remotePosts])
-
-  const saveBusiness = async (business: Business) => {
-    const row = await persistBusiness(business); business = {...business,id:row.id}
-    setSavedBusiness(business)
-    window.localStorage.setItem(BUSINESS_STORAGE_KEY, JSON.stringify(business))
+ const location=useLocation()
+ const [savedBusiness,setSavedBusiness]=useState<Business|null>(null)
+ const [businesses,setBusinesses]=useState<Business[]>([])
+ const [posts,setPosts]=useState<Post[]>([])
+ const [loading,setLoading]=useState(true),[error,setError]=useState(''),[revision,setRevision]=useState(0)
+ useEffect(()=>{const update=()=>setRevision(r=>r+1);window.addEventListener('biziz-auth-change',update);return()=>window.removeEventListener('biziz-auth-change',update)},[])
+ useEffect(()=>{
+  let cancelled=false;setLoading(true);setError('')
+  async function load(){
+   const [bs,ps]=await Promise.all([listBusinesses(),listPosts()])
+   const needsBusiness=['/business/setup','/posts/new'].includes(location.pathname)
+   const mine=currentUser()&&needsBusiness?await ownerBusiness():null
+   const postMatch=location.pathname.match(/^\/posts\/(\d+)$/)
+   const businessMatch=location.pathname.match(/^\/businesses\/(\d+)$/)
+   if(postMatch){const detail=await getPost(postMatch[1]);if(!ps.some((p:Post)=>p.id===detail.id))ps.push(detail)}
+   if(businessMatch){const detail=await getBusiness(businessMatch[1]);for(const p of detail.posts)if(!ps.some((existing:Post)=>existing.id===p.id))ps.push(p)}
+   if(!cancelled){setBusinesses(bs);setPosts(ps);setSavedBusiness(mine)}
   }
-
-  const publishPost = async (post: Post) => {
-    if (!savedBusiness) throw new Error('Set up your business before publishing.'); const row = await persistPost({...post,businessId:savedBusiness.id}); post = {...post,id:row.id,businessId:savedBusiness.id,businessName:savedBusiness.name}
-    setCreatedPosts((state) => {
-      const nextPosts = [post, ...state]
-      window.localStorage.setItem(POSTS_STORAGE_KEY, JSON.stringify(nextPosts))
-      return nextPosts
-    })
-  }
-
-  return (
-    <Routes>
-      <Route path="/" element={<Welcome />} />
-      <Route path="/login" element={<AccountAccess mode="login" />} />
-      <Route path="/account/edit" element={<ProfileEditor />} />
-      <Route path="/account" element={<Account />} />
-      <Route path="/signup" element={<AccountAccess mode="signup" />} />
-      <Route path="/feed" element={<CampusFeed posts={posts} businesses={businesses} />} />
-      <Route path="/posts/new" element={!currentUser() ? <Navigate to="/login?role=business" replace /> : !savedBusiness ? <Navigate to="/business/setup" replace /> : <CreatePost business={savedBusiness} onPublish={publishPost} />} />
-      <Route path="/posts/:postId" element={<PostDetails posts={posts} businesses={businesses} />} />
-      <Route path="/businesses/:businessId" element={<BusinessProfile businesses={businesses} posts={posts} />} />
-      <Route path="/business/setup" element={currentUser() ? <BusinessSetup currentBusiness={savedBusiness} onSave={saveBusiness} /> : <Navigate to="/login?role=business" replace />} />
-      <Route path="*" element={<ScreenHandoff title="Let’s get you back on campus." owner="the team" />} />
-    </Routes>
-  )
+  void load().catch(e=>{if(!cancelled)setError(e.message)}).finally(()=>{if(!cancelled)setLoading(false)})
+  return()=>{cancelled=true}
+ },[location.pathname,revision])
+ const saveBusiness=async(b:Business)=>{const saved=await persistBusiness(b);setSavedBusiness(saved);setBusinesses(state=>[saved,...state.filter(b=>b.id!==saved.id)])}
+ const publishPost=async(p:Post)=>{if(!savedBusiness)throw new Error('Set up your business before publishing.');const saved=await persistPost(p);setPosts(state=>[saved,...state.filter(p=>p.id!==saved.id)])}
+ const protectedRoute=['/posts/new','/business/setup','/owner'].includes(location.pathname)
+ if(loading&&(protectedRoute||location.pathname==='/feed'||/^\/(posts|businesses)\/\d+$/.test(location.pathname)))return <main className="route-shell"><p role="status">Loading campus businesses…</p></main>
+ if(error&&(protectedRoute||location.pathname==='/feed'||/^\/(posts|businesses)\/\d+$/.test(location.pathname)))return <main className="route-shell"><p role="alert">{error}</p><button onClick={()=>setRevision(r=>r+1)}>Try again</button></main>
+ return <Routes>
+  <Route path="/" element={<Welcome/>}/>
+  <Route path="/login" element={<AccountAccess mode="login"/>}/>
+  <Route path="/signup" element={<AccountAccess mode="signup"/>}/>
+  <Route path="/account" element={<Account/>}/>
+  <Route path="/account/edit" element={<ProfileEditor/>}/>
+  <Route path="/feed" element={<CampusFeed posts={posts} businesses={businesses}/>}/>
+  <Route path="/posts/:postId" element={<PostDetails posts={posts} businesses={businesses}/>}/>
+  <Route path="/businesses/:businessId" element={<BusinessProfile businesses={businesses} posts={posts}/>}/>
+  <Route path="/posts/new" element={!currentUser()?<Navigate to="/login?role=business" replace/>:!savedBusiness?<Navigate to="/business/setup" replace/>:<CreatePost business={savedBusiness} onPublish={publishPost}/>}/>
+  <Route path="/business/setup" element={currentUser()?<BusinessSetup currentBusiness={savedBusiness} onSave={saveBusiness}/>:<Navigate to="/login?role=business" replace/>}/>
+  <Route path="/owner" element={currentUser()?<OwnerDashboard/>:<Navigate to="/login?role=business" replace/>}/>
+  <Route path="*" element={<ScreenHandoff title="Let’s get you back on campus." owner="the team"/>}/>
+ </Routes>
 }
-
-

@@ -31,6 +31,7 @@ class BusinessIn(BaseModel):
     whatsapp_number: Optional[str] = None   # optional now
     website_url: Optional[str] = None       # optional, but need this OR WhatsApp
     fulfillment_info: Optional[str] = None  # e.g. "Pickup at student centre"
+    logo_url: Optional[str] = None
 
     @field_validator("category")
     @classmethod
@@ -49,7 +50,7 @@ class BusinessIn(BaseModel):
             raise ValueError("Use digits with country code, e.g. 2348012345678")
         return v
 
-    @field_validator("website_url")
+    @field_validator("website_url", "logo_url")
     @classmethod
     def check_site(cls, v):
         return clean_url(v)

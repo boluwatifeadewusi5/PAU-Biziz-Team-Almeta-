@@ -31,6 +31,10 @@ def current_owner(authorization):
         raise HTTPException(401, "Please log in", headers={"WWW-Authenticate": "Bearer"})
     owner = query("SELECT id FROM owners WHERE token_hash = ? AND token_expires > ?", (token_digest(parts[1]), int(time.time())), one=True)
     if not owner:
+        from .supabase_auth import resolve_owner
+        external_owner = resolve_owner(parts[1])
+        if external_owner is not None:
+            return external_owner
         raise HTTPException(401, "Please log in", headers={"WWW-Authenticate": "Bearer"})
     return owner["id"]
 

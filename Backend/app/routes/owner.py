@@ -19,11 +19,11 @@ def save_my_business(b: BusinessIn, authorization: Optional[str] = Header(None))
     owner_id = current_owner(authorization)
     execute(
             "INSERT INTO businesses (owner_id, name, category, description, whatsapp_number, "
-            "website_url, fulfillment_info, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
+            "website_url, fulfillment_info, created_at, logo_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
             "ON CONFLICT(owner_id) DO UPDATE SET name=excluded.name, category=excluded.category, "
             "description=excluded.description, whatsapp_number=excluded.whatsapp_number, "
-            "website_url=excluded.website_url, fulfillment_info=excluded.fulfillment_info",
-            (owner_id, b.name, b.category, b.description, b.whatsapp_number, b.website_url, b.fulfillment_info, now()),
+            "website_url=excluded.website_url, fulfillment_info=excluded.fulfillment_info, logo_url=excluded.logo_url",
+            (owner_id, b.name, b.category, b.description, b.whatsapp_number, b.website_url, b.fulfillment_info, now(), b.logo_url),
         )
     return shape_business(my_business(owner_id))
 

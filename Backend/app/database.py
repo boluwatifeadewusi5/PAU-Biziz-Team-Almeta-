@@ -88,3 +88,5 @@ def init_db():
     execute("CREATE INDEX IF NOT EXISTS idx_posts_feed ON posts(publication_status, availability, created_at)")
     execute("CREATE INDEX IF NOT EXISTS idx_posts_business ON posts(business_id)")
     execute("CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id)")
+    if 'logo_url' not in {r['name'] for r in query('PRAGMA table_info(businesses)')}:
+        execute('ALTER TABLE businesses ADD COLUMN logo_url TEXT')

@@ -2,21 +2,27 @@ import fs from 'node:fs'
 import vm from 'node:vm'
 import assert from 'node:assert/strict'
 import ts from 'typescript'
-
 const source=fs.readFileSync(new URL('../src/database.ts',import.meta.url),'utf8')
  .replace("import { getSession } from './auth'",'const getSession = globalThis.testSession')
- .replaceAll('import.meta.env.VITE_SUPABASE_URL',"'https://test.invalid'")
- .replaceAll('import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY',"'public-test-key'")
+ .replaceAll('import.meta.env.VITE_API_URL',"'http://api.test'")
 const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText
-const business={id:'my-business',name:'Test business',description:'Test description',category:'Other',whatsapp:'+2348000000000',logoUrl:''}
-async function scenario(existing=[],session={access_token:'test-session',user:{id:'owner-1'}},saved=[{id:'saved-id'}]){
- const calls=[];const context={exports:{},testSession:async()=>session,fetch:async(url,options)=>{calls.push({url,...options});return {ok:true,json:async()=>options.method==='GET'?existing:saved}}}
+function scenario(session={access_token:'test-session'},response={id:7,name:'Shop',category:'Tech'},ok=true){
+ const calls=[],storage=new Map()
+ const context={exports:{},testSession:async()=>session,crypto:{randomUUID:()=> 'browser-id'},localStorage:{getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)},fetch:async(url,options)=>{calls.push({url,...options});return {ok,status:ok?200:422,json:async()=>response}}}
  vm.runInNewContext(compiled,context)
- return {calls,save:context.exports.persistBusiness}
+ return {calls,api:context.exports}
 }
-const create=await scenario();await create.save(business);assert.equal(create.calls.at(-1).method,'POST');assert.equal(JSON.parse(create.calls.at(-1).body).owner_id,'owner-1')
-const existing=await scenario([{id:'existing-id'}]);await existing.save(business);assert.equal(existing.calls.at(-1).method,'PATCH');assert.ok(existing.calls.at(-1).url.endsWith('id=eq.existing-id'));assert.ok(existing.calls[0].url.includes('owner_id=eq.owner-1'))
-const edit=await scenario();await edit.save({...business,id:'existing-id'});assert.equal(edit.calls.length,1);assert.equal(edit.calls[0].method,'PATCH')
-const unauthorized=await scenario([],null);await assert.rejects(()=>unauthorized.save(business),/log in/);assert.equal(unauthorized.calls.length,0)
-const noSave=await scenario([],undefined,[]);await assert.rejects(()=>noSave.save(business),/No business was saved/)
-console.log('Passed: create, update, duplicate prevention, signed-out rejection, and empty-save error.')
+const b={id:'my-business',name:'Shop',description:'Campus shop',category:'Tech',whatsapp:'+2348000000000',logoUrl:''}
+const create=scenario();const saved=await create.api.persistBusiness(b)
+assert.equal(saved.id,'7');assert.equal(create.calls[0].method,'PUT');assert.equal(create.calls[0].url,'http://api.test/owner/business')
+assert.equal(create.calls[0].headers.Authorization,'Bearer test-session');assert.equal(JSON.parse(create.calls[0].body).whatsapp_number,b.whatsapp)
+const denied=scenario(null);await assert.rejects(()=>denied.api.persistBusiness(b),/log in/);assert.equal(denied.calls.length,0)
+const p={title:'Offer',description:'Test offer',category:'Tech',imageUrl:'',price:'₦3,500',availability:'available'}
+const publish=scenario(undefined,{id:10,business_id:7,price_label:'₦3,500',business_name:'Shop'});const post=await publish.api.persistPost(p)
+assert.equal(post.businessId,'7');assert.equal(JSON.parse(publish.calls[0].body).price_amount,3500)
+const invalid=scenario();await assert.rejects(()=>invalid.api.persistPost({...p,price:'negotiable'}),/price/);assert.equal(invalid.calls.length,0)
+const free=scenario();await free.api.persistPost({...p,price:'0'});assert.equal(JSON.parse(free.calls[0].body).price_amount,0)
+const contact=scenario();await contact.api.persistPost({...p,price:''});assert.equal(JSON.parse(contact.calls[0].body).price_mode,'contact')
+const failure=scenario(undefined,{detail:[{loc:['body','name'],msg:'Required'}]},false);await assert.rejects(()=>failure.api.persistBusiness(b),/name: Required/)
+const browser=scenario(null,{liked:true,likes:1});await browser.api.toggleLike('10');assert.equal(browser.calls[0].headers['x-client-id'],'browser-id')
+console.log('Passed: business mapping, Supabase bearer header, signed-out rejection, NGN parsing, zero/contact pricing, validation errors and public likes.')
