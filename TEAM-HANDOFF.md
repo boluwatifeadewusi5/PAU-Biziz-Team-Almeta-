@@ -12,9 +12,9 @@ Stack: React, TypeScript, Vite, React Router, Lucide icons, plain CSS.
 
 ## Routes
 
-`/` welcome (implemented), `/login` partner handoff, `/signup` Ruth next iteration, `/feed` Ruth subsequent iteration.
+Implemented on Ruth branch: `/` welcome, `/signup`, `/feed`, `/posts/:postId`, `/businesses/:businessId`, `/business/setup`, `/posts/new`.
 
-Planned: `/search`, `/posts/:postId`, `/businesses/:businessId`, `/account`, `/business/setup`, `/posts/new`, `/business/posts`.
+Partner handoff (Vincent-owned): `/login`, plus planned `/search`, `/account`, `/business/posts`.
 
 The handoff screens deliberately identify unfinished functionality. Authentication and backend persistence are not implemented. Welcome-page business cards are illustrative, not real listings. Explore leads to the feed handoff until that screen is built.
 
