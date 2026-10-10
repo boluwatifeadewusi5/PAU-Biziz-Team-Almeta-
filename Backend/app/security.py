@@ -17,6 +17,8 @@ def verify_password(password, stored):
         return False
     if algorithm != "scrypt" or len(salt) != 32 or len(expected) != 128:
         return False
+    if any(c not in "0123456789abcdef" for c in salt + expected):
+        return False
     actual = hashlib.scrypt(password.encode(), salt=salt.encode(), n=16384, r=8, p=1).hex()
     return hmac.compare_digest(actual, expected)
 

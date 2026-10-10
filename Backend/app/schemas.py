@@ -1,6 +1,6 @@
 from typing import Literal, Optional
 from urllib.parse import urlsplit
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 from .constants import CATEGORIES
 
 def clean_url(v):
@@ -9,8 +9,12 @@ def clean_url(v):
     v = v.strip()
     if "://" not in v:
         v = "https://" + v
+    if "\\" in v or any(ord(c) < 32 or ord(c) == 127 for c in v):
+        raise ValueError("Enter a valid HTTP or HTTPS URL")
+    # Validate the hostname and port as well as the scheme before storing links.
+    HttpUrl(v)
     parsed = urlsplit(v)
-    if parsed.scheme not in ("http", "https") or not parsed.hostname or "." not in parsed.hostname or parsed.username or parsed.password or any(c.isspace() for c in v):
+    if parsed.scheme not in ("http", "https") or not parsed.hostname or "." not in parsed.hostname.strip(".") or parsed.username or parsed.password or any(c.isspace() for c in v):
         raise ValueError("Enter a valid HTTP or HTTPS URL")
     try:
         parsed.port
