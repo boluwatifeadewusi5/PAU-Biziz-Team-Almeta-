@@ -1,3 +1,4 @@
+import BusinessNavigation from './BusinessNavigation'
 import AdminAccounts from './AdminAccounts'
 import AdminDashboard from './AdminDashboard'
 import {directoryBusinesses,directoryPosts,mergeDirectory} from './directory'
@@ -1011,7 +1012,7 @@ export default function App() {
   }
 
   return (
-    <Routes>
+    <><BusinessNavigation businesses={ownedBusinesses} activeId={activeBusiness?.id}/><Routes>
       <Route path="/admin/accounts" element={<CampusFeed posts={posts} businesses={businesses} page={<AdminAccounts/>}/>}/>
       <Route path="/admin" element={<CampusFeed posts={posts} businesses={businesses} page={<AdminDashboard/>}/>}/>
       <Route path="/admin/verify-businesses" element={<CampusFeed posts={posts} businesses={businesses} page={<AdminPage/>}/>}/>
@@ -1034,7 +1035,7 @@ export default function App() {
       <Route path="/businesses/:businessId" element={<BusinessProfile businesses={businesses} posts={posts} />} />
       <Route path="/business/setup" element={!currentUser()?<Navigate to="/login" replace/>:!ownedLoaded?<p role="status">Loading your businesses…</p>:ownedError?<p role="alert">{ownedError}</p>:!selectedBusinessId?<Navigate to={ownedBusinesses.length?'/businesses/mine':'/business/new'} replace/>:!ownedBusinesses.some(b=>b.id===selectedBusinessId)?<Navigate to="/businesses/mine" replace/>:<BusinessSetup key={selectedBusinessId} currentBusiness={ownedBusinesses.find(b=>b.id===selectedBusinessId)!} onSave={saveBusiness}/>} />
       <Route path="*" element={<ScreenHandoff title="Let’s get you back on campus." owner="the team" />} />
-    </Routes>
+    </Routes></>
   )
 }
 

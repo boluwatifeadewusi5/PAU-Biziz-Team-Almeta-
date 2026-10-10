@@ -28,7 +28,7 @@ export async function authenticate(mode:'login'|'signup',email:string,password:s
  if(!supabase) throw new Error('Account access is being connected. You can explore businesses while setup is completed.')
  if(mode==='signup'&&!isStudentEmail(email))throw new Error(`Student signup requires your @${studentEmailDomain} email. Admins use their existing admin login.`)
  if(mode==='signup') localStorage.setItem('biziz-signup-role',role)
- const result=mode==='signup' ? await supabase.auth.signUp({email,password,options:{data:{name,role},emailRedirectTo:`${window.location.origin}/auth/callback`}}) : await supabase.auth.signInWithPassword({email,password})
+ const result=mode==='signup' ? await supabase.auth.signUp({email,password,options:{data:{name:name.trim()||email.split('@')[0],role},emailRedirectTo:`${window.location.origin}/auth/callback`}}) : await supabase.auth.signInWithPassword({email,password})
  if(result.error) throw result.error
  storeSession(result.data.session)
  return Boolean(result.data.session)
