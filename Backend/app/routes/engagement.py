@@ -1,26 +1,25 @@
 from typing import Optional
 from fastapi import APIRouter, Header, HTTPException
 from ..database import query, execute, now, connect
-from ..schemas import BusinessIn, PostIn, LoginIn, CommentIn
-from ..presentation import POST_SELECT, shape_post, shape_business, published_post_or_404
-from ..security import current_owner, my_business, own_post
-from ..constants import CATEGORIES
+from ..schemas import CommentIn
+from ..presentation import published_post_or_404
 
 router = APIRouter()
 
 @router.post("/posts/{post_id}/like")
 def toggle_like(post_id: int, x_client_id: Optional[str] = Header(None)):
-    if not x_client_id or not 1 <= len(x_client_id.strip()) <= 128:
+    client_id = (x_client_id or "").strip()
+    if not 1 <= len(client_id) <= 128:
         raise HTTPException(400, "Supply x-client-id with 1–128 characters")
     published_post_or_404(post_id)
     conn = connect()
     try:
         conn.execute("BEGIN IMMEDIATE")
-        already = conn.execute("SELECT 1 FROM likes WHERE post_id=? AND client_id=?", (post_id, x_client_id)).fetchone()
+        already = conn.execute("SELECT 1 FROM likes WHERE post_id=? AND client_id=?", (post_id, client_id)).fetchone()
         if already:
-            conn.execute("DELETE FROM likes WHERE post_id=? AND client_id=?", (post_id, x_client_id))
+            conn.execute("DELETE FROM likes WHERE post_id=? AND client_id=?", (post_id, client_id))
         else:
-            conn.execute("INSERT INTO likes (post_id, client_id) VALUES (?, ?)", (post_id, x_client_id))
+            conn.execute("INSERT INTO likes (post_id, client_id) VALUES (?, ?)", (post_id, client_id))
         total = conn.execute("SELECT COUNT(*) FROM likes WHERE post_id=?", (post_id,)).fetchone()[0]
         conn.commit()
     finally:
