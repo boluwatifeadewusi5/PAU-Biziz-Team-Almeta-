@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react'
-import { Link, NavLink, Route, Routes, useNavigate, useParams } from 'react-router-dom'
+import { type FormEvent, useMemo, useState } from 'react'
+import { Link, NavLink, Route, Routes, useNavigate, useParams, useLocation } from 'react-router-dom'
 import {
   ArrowRight,
   ArrowUpRight,
-  Building2,
+  BriefcaseBusiness, Building2, UserRound,
   ChevronLeft,
   Coffee,
   Eye,
@@ -22,6 +22,7 @@ import {
   Store,
 } from 'lucide-react'
 
+type Role = 'student' | 'business'
 type Category = 'Food & drinks' | 'Beauty & grooming' | 'Tech & services' | 'Fashion' | 'Academic support' | 'Wellness' | 'Other'
 
 type Business = {
@@ -220,309 +221,133 @@ function Welcome() {
           Log in <ArrowUpRight size={16} />
         </Link>
       </header>
-      <main>
-        <section className="hero">
+      <main className="welcome-main">
+        <section className="hero" aria-labelledby="onboarding-title">
           <div className="hero-copy">
-            <span className="eyebrow">
+            <p className="eyebrow">
               <span /> SAME CAMPUS. MORE POSSIBILITIES.
-            </span>
-            <h1>
-              Discover · Support · Grow.<br />
-              <span>Your next find is nearby.</span>
-            </h1>
-            <p>
-              From your next lunch spot to the person who can fix your laptop. Discover the businesses built by people right
-              here at PAU.
             </p>
-            <div className="hero-actions">
-              <Link className="button primary" to="/feed">
-                Explore businesses <ArrowRight size={18} />
+            <h1 id="onboarding-title">Discover. Support. Grow.</h1>
+            <p className="hero-intro">
+              PAU biziz helps students discover campus businesses and helps business owners reach their next
+              customer faster.
+            </p>
+            <div className="hero-actions" role="group" aria-label="Get started options">
+              <Link
+                className="button primary"
+                to={{ pathname: '/signup', search: '?role=student' }}
+                state={{ role: 'student' as Role }}
+              >
+                <UserRound size={18} />
+                Get started as a student
               </Link>
-              <Link className="button secondary" to="/login">
-                Log in
+              <Link
+                className="button gold"
+                to={{ pathname: '/signup', search: '?role=business' }}
+                state={{ role: 'business' as Role }}
+              >
+                <BriefcaseBusiness size={18} />
+                Get started as a business
               </Link>
-              <Link className="button gold" to="/signup">
-                Create account
+            </div>
+            <div className="secondary-actions">
+              <Link className="text-link" to="/feed">
+                Explore demo businesses <ArrowRight size={16} />
               </Link>
             </div>
-            <div className="hero-note">
-              <span className="mini-avatars">
-                <i>O</i>
-                <i>T</i>
-                <i>R</i>
-              </span>
-              <span>
-                Discover local. Support your own.
-                <br />
-                <strong>No account needed to explore.</strong>
-              </span>
-            </div>
           </div>
-          <div className="hero-visual" aria-label="Illustrated preview of campus businesses">
-            <div className="orbit orbit-one" />
-            <div className="orbit orbit-two" />
-            <span className="floating-note">
-              <Sparkles size={17} /> A little closer to everything.
-            </span>
-            <div className="preview-shell">
-              <div className="preview-header">
-                <span className="preview-brand">
-                  PAU <b>biziz</b>
-                </span>
-                <Search size={17} />
-              </div>
-              <div className="preview-tabs">
-                <span className="selected">For you</span>
-                <span>Food</span>
-                <span>Fashion</span>
-                <span>Services</span>
-              </div>
-              <div className="preview-business">
-                <span className="business-avatar">
-                  <Coffee size={18} />
-                </span>
-                <div>
-                  <strong>The Snack Hub</strong>
-                  <small>Food & drinks · PAU campus</small>
-                </div>
-                <span className="preview-tag">Discover</span>
-              </div>
-              <div className="food-art">
-                <span className="art-caption">
-                  A GOOD DAY
-                  <br />
-                  STARTS HERE.
-                </span>
-                <div className="cup">
-                  <div className="cup-lid" />
-                  <span>
-                    SNACK
-                    <br />
-                    <b>HUB</b>
-                  </span>
-                </div>
-                <div className="cookie cookie-one" />
-                <div className="cookie cookie-two" />
-                <span className="art-sticker">
-                  made with
-                  <br />
-                  <b>good vibes ✦</b>
-                </span>
-              </div>
-              <div className="preview-caption">
-                <strong>A little fuel for your next big idea.</strong>
-                <p>Fresh bites, cold drinks & your favourite campus stop.</p>
-                <span>
-                  <MapPin size={12} /> Right here at PAU <Heart size={15} />
-                </span>
-              </div>
-            </div>
-            <div className="floating-business">
-              <span>
-                <Scissors size={22} />
-              </span>
-              <div>
-                <small>YOUR NEXT DISCOVERY</small>
-                <strong>Campus Cuts</strong>
-                <p>Fresh looks. Familiar faces.</p>
-              </div>
-              <ArrowUpRight size={20} />
-            </div>
-            <span className="handwritten">
-              Good things are
-              <br />
-              closer than you think.
-            </span>
-          </div>
-        </section>
-        <section className="discovery-section">
-          <div className="section-heading">
-            <div>
-              <span className="eyebrow">A CAMPUS FULL OF POSSIBILITIES</span>
-              <h2>There’s a biz for that.</h2>
-            </div>
-            <Link to="/feed">
-              Find your next favourite <ArrowRight size={17} />
-            </Link>
-          </div>
-          <div className="discovery-grid">
-            {discoveries.map(({ name, category, title, icon: Icon, style, label, price }) => (
-              <Link to="/feed" className={`discovery-card ${style}`} key={name}>
-                <div className="card-art">
-                  <span className="card-label">{label}</span>
-                  <Icon size={68} strokeWidth={1.25} />
-                  <span className="card-art-copy">{price}</span>
-                  <span className="card-arrow">
-                    <ArrowUpRight size={19} />
-                  </span>
-                </div>
-                <div className="card-info">
-                  <small>{category}</small>
-                  <h3>{name}</h3>
-                  <p>{title}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-          <p className="sample-note">A glimpse of what’s possible · Illustrative businesses</p>
-        </section>
-        <section className="owner-banner">
-          <div>
-            <span className="eyebrow">BUILT SOMETHING GOOD?</span>
-            <h2>
-              Your next customer could
-              <br />
-              be sitting in your next class.
-            </h2>
-            <p>Give your campus business a place to be discovered.</p>
-          </div>
-          <Link className="button gold" to="/signup">
-            Put your biz on the map <ArrowRight size={18} />
-          </Link>
+          <aside className="hero-panel" aria-label="PAU biziz highlights">
+            <p className="panel-brand">
+              PAU <em>biziz</em>
+            </p>
+            <p className="panel-tagline">Discover · Support · Grow</p>
+            <ul>
+              <li>
+                <Sparkles size={15} />
+                Find nearby campus offers in seconds
+              </li>
+              <li>
+                <Sparkles size={15} />
+                Promote your business to the PAU community
+              </li>
+              <li>
+                <Sparkles size={15} />
+                Start now with a short demo signup flow
+              </li>
+            </ul>
+          </aside>
         </section>
       </main>
-      <footer>
-        <Brand />
-        <span>Discover. Support. Grow.</span>
-        <small>Made for the PAU community.</small>
-      </footer>
     </div>
   )
 }
 
 function Signup() {
-  const navigate = useNavigate()
-  const [fullName, setFullName] = useState('')
+  const location = useLocation()
+  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [isComplete, setIsComplete] = useState(false)
 
-  const validate = () => {
-    const nextErrors: Record<string, string> = {}
-    if (!fullName.trim()) nextErrors.fullName = 'Please enter your full name.'
-    if (!email.trim()) nextErrors.email = 'Please enter your email address.'
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) nextErrors.email = 'Please enter a valid email address.'
-    if (!password) nextErrors.password = 'Please enter a password.'
-    else if (password.length < 8) nextErrors.password = 'Password should be at least 8 characters.'
-    if (!confirmPassword) nextErrors.confirmPassword = 'Please confirm your password.'
-    else if (confirmPassword !== password) nextErrors.confirmPassword = 'Passwords do not match.'
-    return nextErrors
-  }
+  const role = useMemo<Role>(() => {
+    const stateRole = (location.state as { role?: string } | null)?.role
+    if (stateRole === 'student' || stateRole === 'business') return stateRole
+    const queryRole = new URLSearchParams(location.search).get('role')
+    return queryRole === 'business' ? 'business' : 'student'
+  }, [location.search, location.state])
 
-  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const roleCopy =
+    role === 'business'
+      ? {
+          title: 'Set up your business account',
+          subtitle: 'Share your business with students across PAU in a few quick steps.',
+          confirmation: 'Demo details accepted. Continue to set up your business; no account has been created.',
+        }
+      : {
+          title: 'Create your student account',
+          subtitle: 'Join PAU biziz to discover, support, and grow with campus businesses.',
+          confirmation: 'Demo details accepted. Explore the feed; no account has been created.',
+        }
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const nextErrors = validate()
-    setErrors(nextErrors)
-    if (Object.keys(nextErrors).length) return
-
-    setIsSubmitting(true)
-    await new Promise((resolve) => window.setTimeout(resolve, 900))
-    setIsSubmitting(false)
-    setIsComplete(true)
+    if (!name || !email || !password) return
+    setIsSubmitted(true)
   }
 
   return (
-    <main className="route-shell auth-shell">
-      <Brand />
-      <section className="surface-card auth-card">
-        {!isComplete ? (
-          <>
-            <span className="eyebrow route-eyebrow">JOIN THE PAU COMMUNITY</span>
-            <h1>Create your account</h1>
-            <p>Set up your student profile so you can discover businesses and share your own offers.</p>
-            <form className="stack-form" onSubmit={submit} noValidate>
-              <label htmlFor="signup-fullname">Full name</label>
-              <input
-                id="signup-fullname"
-                value={fullName}
-                onChange={(event) => setFullName(event.target.value)}
-                autoComplete="name"
-                aria-invalid={Boolean(errors.fullName)}
-              />
-              {errors.fullName ? <small className="field-error">{errors.fullName}</small> : null}
-
-              <label htmlFor="signup-email">Email address</label>
-              <input
-                id="signup-email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                type="email"
-                autoComplete="email"
-                aria-invalid={Boolean(errors.email)}
-              />
-              {errors.email ? <small className="field-error">{errors.email}</small> : null}
-
-              <label htmlFor="signup-password">Password</label>
-              <div className="password-field">
-                <input
-                  id="signup-password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  aria-invalid={Boolean(errors.password)}
-                />
-                <button
-                  type="button"
-                  className="icon-button"
-                  onClick={() => setShowPassword((value) => !value)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-              {errors.password ? <small className="field-error">{errors.password}</small> : null}
-
-              <label htmlFor="signup-confirm-password">Confirm password</label>
-              <div className="password-field">
-                <input
-                  id="signup-confirm-password"
-                  value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  aria-invalid={Boolean(errors.confirmPassword)}
-                />
-                <button
-                  type="button"
-                  className="icon-button"
-                  onClick={() => setShowConfirmPassword((value) => !value)}
-                  aria-label={showConfirmPassword ? 'Hide confirmation password' : 'Show confirmation password'}
-                >
-                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-              {errors.confirmPassword ? <small className="field-error">{errors.confirmPassword}</small> : null}
-
-              <button className="button primary" disabled={isSubmitting}>
-                {isSubmitting ? 'Creating account...' : 'Create account'}
-              </button>
-            </form>
-            <p className="route-meta">
-              Already have an account? <Link to="/login">Log in</Link>
-            </p>
-          </>
+    <main className="signup-page">
+      <header className="signup-topbar">
+        <Brand />
+        <Link className="text-link" to="/">
+          <ChevronLeft size={16} />
+          Back to welcome
+        </Link>
+      </header>
+      <section className="signup-card" aria-labelledby="signup-title">
+        <p className="eyebrow">
+          <span /> SIGN UP
+        </p>
+        <h1 id="signup-title">{roleCopy.title}</h1>
+        <p>{roleCopy.subtitle}</p>
+        {!isSubmitted ? (
+          <form onSubmit={handleSubmit} className="signup-form">
+            <label htmlFor="fullName">Full name</label>
+            <input id="fullName" name="fullName" type="text" value={name} onChange={(event) => setName(event.target.value)} required />
+            <label htmlFor="email">Email address</label>
+            <input id="email" name="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+            <label htmlFor="password">Password</label>
+            <input id="password" name="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+            <button type="submit" className="button primary">
+              Continue <ArrowRight size={17} />
+            </button>
+          </form>
         ) : (
-          <div className="success-state">
-            <span className="eyebrow route-eyebrow">ACCOUNT READY</span>
-            <h1>Welcome, {fullName.split(' ')[0] || 'friend'}!</h1>
-            <p>
-              Your signup details were captured in this demo flow. Next, head to the login screen or go straight to the feed
-              to explore sample campus offers.
-            </p>
-            <div className="inline-actions">
-              <button className="button primary" onClick={() => navigate('/login')}>
-                Go to login
-              </button>
-              <button className="button secondary" onClick={() => navigate('/feed')}>
-                Explore businesses
-              </button>
-            </div>
+          <div className="signup-confirmation" role="status" aria-live="polite">
+            <p>{roleCopy.confirmation}</p>
+            <Link className="button gold" to={role === 'business' ? '/business/setup' : '/feed'}>
+              Continue to demo <ArrowRight size={17} />
+            </Link>
           </div>
         )}
       </section>
