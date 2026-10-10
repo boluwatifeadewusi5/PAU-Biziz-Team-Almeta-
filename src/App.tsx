@@ -999,7 +999,8 @@ export default function App() {
       <Route path="/account/edit" element={<ProfileEditor />} />
       <Route path="/account" element={<Account />} />
       <Route path="/signup" element={<AccountAccess mode="signup" />} />
-      {['/explore','/search','/saved','/following'].map(path=><Route key={path} path={path} element={<CampusFeed posts={posts} businesses={businesses}/>} />)}
+      <Route path="/search" element={<Navigate to={'/explore'+routeLocation.search} replace/>}/>
+      {['/explore','/notifications','/saved','/following'].map(path=><Route key={path} path={path} element={<CampusFeed posts={posts} businesses={businesses}/>} />)}
       <Route path="/feed" element={<CampusFeed posts={posts} businesses={businesses} />} />
       <Route path="/posts/new" element={!currentUser() ? <Navigate to="/login?role=business" replace /> : !savedBusiness ? <Navigate to="/business/setup" replace /> : <CreatePost business={savedBusiness} onPublish={publishPost} />} />
       <Route path="/posts/:postId" element={<PostDetails posts={posts} businesses={businesses} />} />
