@@ -1,3 +1,5 @@
+import ProfileEditor from './ProfileEditor'
+import { prepareImage } from './images'
 import { backendReady, currentUser } from './auth'
 import { listBusinesses, listPosts, persistBusiness, persistPost } from './database'
 import CampusFeed from './CampusFeed'
@@ -173,14 +175,7 @@ function readStoredPosts(): Post[] {
   }
 }
 
-async function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '')
-    reader.onerror = () => reject(new Error('File read failed'))
-    reader.readAsDataURL(file)
-  })
-}
+const fileToDataUrl = prepareImage
 
 function formatWhatsAppLink(number: string) {
   const normalized = number.replace(/[^\d+]/g, '')
@@ -658,6 +653,7 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
   const [isSaving, setIsSaving] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
 
+  useEffect(()=>{if(!currentBusiness)return;setDraft({name:currentBusiness.name,description:currentBusiness.description,category:currentBusiness.category,whatsapp:currentBusiness.whatsapp,logoUrl:currentBusiness.logoUrl});setLogoPreview(currentBusiness.logoUrl)},[currentBusiness?.id])
   const update = (key: keyof BusinessDraft, value: string) => {
     setDraft((state) => ({ ...state, [key]: value }))
     setIsSaved(false)
@@ -679,7 +675,7 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
       return
     }
     const preview = await fileToDataUrl(file)
-    setLogoPreview(preview)
+    setLogoPreview(preview); setIsSaved(false)
   }
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -689,13 +685,11 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
     if (Object.keys(nextErrors).length) return
 
     setIsSaving(true)
-    let savedLogo = draft.logoUrl.trim()
-    if (logoFile) {
-      savedLogo = await fileToDataUrl(logoFile)
-    }
+    let savedLogo = logoPreview || draft.logoUrl.trim()
+
 
     const savedBusiness: Business = {
-      id: MY_BUSINESS_ID,
+      id: currentBusiness?.id || MY_BUSINESS_ID,
       name: draft.name.trim(),
       description: draft.description.trim(),
       category: draft.category,
@@ -715,7 +709,7 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
       <Brand />
       <section className="surface-card form-card">
         <span className="eyebrow route-eyebrow">BUSINESS SETUP</span>
-        <h1>Set up your business profile</h1>
+        <h1>{currentBusiness ? 'Edit your business profile' : 'Set up your business profile'}</h1>
         <p>Introduce your business to the PAU community.</p>
 
         <form className="stack-form" onSubmit={submit} noValidate>
@@ -764,9 +758,9 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
           />
 
           <label htmlFor="business-logo-file">Or upload logo (optional)</label>
-          <input id="business-logo-file" type="file" accept="image/*" onChange={(event) => void handleFileChange(event.target.files?.[0] || null)} />
+          <input id="business-logo-file" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { void handleFileChange(event.target.files?.[0] || null).catch(error => setErrors({image: error.message, name:error.message})); }} />
 
-          {logoPreview ? <img className="image-preview" src={sanitizeImageUrl(logoPreview)} alt="Business logo preview" /> : null}
+          {logoPreview ? <><img className="image-preview" src={sanitizeImageUrl(logoPreview)} alt="Business logo preview" /><button type="button" className="button secondary" onClick={()=>{setLogoPreview('');setLogoFile(null);update('logoUrl','')}}>Remove logo</button></> : null}
 
           <button className="button primary" disabled={isSaving}>
             {isSaving ? 'Saving profile...' : 'Save business profile'}
@@ -905,7 +899,7 @@ function CreatePost({ onPublish, business }: { onPublish: (post: Post) => void; 
             />
 
             <label htmlFor="post-image-file">Or upload image</label>
-            <input id="post-image-file" type="file" accept="image/*" onChange={(event) => void handleFileChange(event.target.files?.[0] || null)} />
+            <input id="post-image-file" type="file" accept="image/*" onChange={(event) => { void handleFileChange(event.target.files?.[0] || null).catch(error => setErrors({image: error.message, name:error.message})); }} />
             {errors.image ? <small className="field-error">{errors.image}</small> : null}
 
             <button className="button primary" disabled={isPublishing}>
@@ -993,14 +987,17 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Welcome />} />
       <Route path="/login" element={<AccountAccess mode="login" />} />
+      <Route path="/account/edit" element={<ProfileEditor />} />
       <Route path="/account" element={<Account />} />
       <Route path="/signup" element={<AccountAccess mode="signup" />} />
       <Route path="/feed" element={<CampusFeed posts={posts} businesses={businesses} />} />
       <Route path="/posts/new" element={!currentUser() ? <Navigate to="/login?role=business" replace /> : !savedBusiness ? <Navigate to="/business/setup" replace /> : <CreatePost business={savedBusiness} onPublish={publishPost} />} />
       <Route path="/posts/:postId" element={<PostDetails posts={posts} businesses={businesses} />} />
       <Route path="/businesses/:businessId" element={<BusinessProfile businesses={businesses} posts={posts} />} />
-      <Route path="/business/setup" element={currentUser() ? <BusinessSetup key={savedBusiness?.id || 'new'} currentBusiness={savedBusiness} onSave={saveBusiness} /> : <Navigate to="/login?role=business" replace />} />
+      <Route path="/business/setup" element={currentUser() ? <BusinessSetup currentBusiness={savedBusiness} onSave={saveBusiness} /> : <Navigate to="/login?role=business" replace />} />
       <Route path="*" element={<ScreenHandoff title="Let’s get you back on campus." owner="the team" />} />
     </Routes>
   )
 }
+
+

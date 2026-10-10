@@ -30,3 +30,14 @@ export async function authenticate(mode:'login'|'signup',email:string,password:s
  return Boolean(result.data.session)
 }
 export async function signOut(){ if(supabase) await supabase.auth.signOut();storeSession(null);localStorage.removeItem('biziz-signup-role') }
+export async function availableProviders():Promise<('azure'|'google')[]>{
+ if(!url||!key)return []
+ const response=await fetch(`${url}/auth/v1/settings`,{headers:{apikey:key}});if(!response.ok)return []
+ const settings=await response.json();return (['azure','google'] as const).filter(provider=>settings.external?.[provider])
+}
+export async function providerSignIn(provider:'azure'|'google',role:string){
+ if(!supabase)throw new Error('Sign-in is not configured yet.')
+ localStorage.setItem('biziz-signup-role',role)
+ const {error}=await supabase.auth.signInWithOAuth({provider,options:{redirectTo:`${window.location.origin}/auth/callback`,...(provider==='azure'?{scopes:'email'}:{})}})
+ if(error)throw error
+}
