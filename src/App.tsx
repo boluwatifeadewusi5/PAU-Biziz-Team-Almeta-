@@ -1,10 +1,10 @@
-import { backendReady } from './auth'
+import { backendReady, currentUser } from './auth'
 import { listBusinesses, listPosts, persistBusiness, persistPost } from './database'
 import CampusFeed from './CampusFeed'
 import { AccountAccess, Account } from './AccountScreens'
 import './campus.css'
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
-import { Link, NavLink, Route, Routes, useNavigate, useParams, useLocation } from 'react-router-dom'
+import { Link, Navigate, NavLink, Route, Routes, useNavigate, useParams, useLocation } from 'react-router-dom'
 import {
   ArrowRight,
   ArrowUpRight,
@@ -773,7 +773,7 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
           </button>
         </form>
 
-        {isSaved ? <p className="success-pill">Business profile saved.</p> : null}
+        {isSaved ? <p className="success-pill">Business profile saved. <Link to="/posts/new">Create your first post →</Link></p> : null}
       </section>
     </main>
   )
@@ -996,14 +996,11 @@ export default function App() {
       <Route path="/account" element={<Account />} />
       <Route path="/signup" element={<AccountAccess mode="signup" />} />
       <Route path="/feed" element={<CampusFeed posts={posts} businesses={businesses} />} />
-      <Route path="/posts/new" element={<CreatePost business={savedBusiness} onPublish={publishPost} />} />
+      <Route path="/posts/new" element={!currentUser() ? <Navigate to="/login?role=business" replace /> : !savedBusiness ? <Navigate to="/business/setup" replace /> : <CreatePost business={savedBusiness} onPublish={publishPost} />} />
       <Route path="/posts/:postId" element={<PostDetails posts={posts} businesses={businesses} />} />
       <Route path="/businesses/:businessId" element={<BusinessProfile businesses={businesses} posts={posts} />} />
-      <Route path="/business/setup" element={<BusinessSetup currentBusiness={savedBusiness} onSave={saveBusiness} />} />
+      <Route path="/business/setup" element={currentUser() ? <BusinessSetup key={savedBusiness?.id || 'new'} currentBusiness={savedBusiness} onSave={saveBusiness} /> : <Navigate to="/login?role=business" replace />} />
       <Route path="*" element={<ScreenHandoff title="Let’s get you back on campus." owner="the team" />} />
     </Routes>
   )
 }
-
-
-

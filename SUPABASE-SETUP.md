@@ -10,3 +10,4 @@
 PAU email is currently a placeholder, not an enforced domain restriction. Confirm the official email suffix before adding that rule. Supabase email delivery settings may need configuration before public signup volume grows.
 
 Seed listings illustrate layout and are not owner accounts. No invented contact number should be used. Followers, saves, and likes currently persist on the current device; shared social features are a separate database iteration.
+Email confirmations: add https://pau-biziz.vercel.app/auth/callback to Authentication > URL Configuration > Redirect URLs. Keep Site URL set to https://pau-biziz.vercel.app. Business role is stored in signup metadata; students go to /feed and business owners to /business/setup. Old links falling back to the homepage are handled as well.
