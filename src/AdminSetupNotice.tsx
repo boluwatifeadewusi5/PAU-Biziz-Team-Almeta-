@@ -1,0 +1,1 @@
+export default function AdminSetupNotice(){return <section className="surface-card"><h2>Management activation pending</h2><p>Your sign-in works. Applications and account actions are temporarily unavailable while management is being connected.</p><button className="button secondary" onClick={()=>window.location.reload()}>Refresh management</button></section>}
