@@ -182,6 +182,19 @@ function formatWhatsAppLink(number: string) {
   return `https://wa.me/${value}`
 }
 
+function sanitizeImageUrl(url: string, fallback = 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=1200&q=80') {
+  const value = url.trim()
+  if (!value) return fallback
+  if (value.startsWith('data:image/')) return value
+  try {
+    const parsed = new URL(value, 'https://pau-biziz.local')
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return parsed.toString()
+    return fallback
+  } catch {
+    return fallback
+  }
+}
+
 function Brand() {
   return (
     <Link className="brand" to="/" aria-label="PAU biziz home">
@@ -600,7 +613,7 @@ function Feed({ posts, businesses }: { posts: Post[]; businesses: Business[] }) 
           <div className="post-grid">
             {filteredPosts.map((post) => (
               <article key={post.id} className="post-card">
-                <img src={post.imageUrl} alt={post.title} />
+                <img src={sanitizeImageUrl(post.imageUrl)} alt={post.title} />
                 <div className="post-card-body">
                   <small>{post.category}</small>
                   <h3>{post.title}</h3>
@@ -633,7 +646,7 @@ function Feed({ posts, businesses }: { posts: Post[]; businesses: Business[] }) 
           <div className="business-list">
             {businesses.map((business) => (
               <Link key={business.id} to={`/businesses/${business.id}`} className="business-list-item">
-                <img src={business.logoUrl} alt={`${business.name} logo`} />
+                <img src={sanitizeImageUrl(business.logoUrl)} alt={`${business.name} logo`} />
                 <span>
                   <strong>{business.name}</strong>
                   <small>{business.category}</small>
@@ -693,7 +706,7 @@ function PostDetails({ posts, businesses }: { posts: Post[]; businesses: Busines
     <main className="route-shell post-details-shell">
       <Brand />
       <article className="surface-card post-details-card">
-        <img src={post.imageUrl} alt={post.title} className="detail-image" />
+        <img src={sanitizeImageUrl(post.imageUrl)} alt={post.title} className="detail-image" />
         <div className="detail-content">
           <small>{post.category}</small>
           <h1>{post.title}</h1>
@@ -761,7 +774,7 @@ function BusinessProfile({ businesses, posts }: { businesses: Business[]; posts:
       <Brand />
       <section className="surface-card profile-card">
         <div className="profile-header">
-          <img src={business.logoUrl} alt={`${business.name} logo`} />
+          <img src={sanitizeImageUrl(business.logoUrl)} alt={`${business.name} logo`} />
           <div>
             <small>{business.category}</small>
             <h1>{business.name}</h1>
@@ -781,7 +794,7 @@ function BusinessProfile({ businesses, posts }: { businesses: Business[]; posts:
           <div className="profile-posts">
             {businessPosts.map((post) => (
               <Link key={post.id} to={`/posts/${post.id}`} className="profile-post-item">
-                <img src={post.imageUrl} alt={post.title} />
+                <img src={sanitizeImageUrl(post.imageUrl)} alt={post.title} />
                 <span>
                   <strong>{post.title}</strong>
                   <small>{post.price || 'Price on request'} · {post.availability}</small>
@@ -923,7 +936,7 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
           <label htmlFor="business-logo-file">Or upload logo (optional)</label>
           <input id="business-logo-file" type="file" accept="image/*" onChange={(event) => void handleFileChange(event.target.files?.[0] || null)} />
 
-          {logoPreview ? <img className="image-preview" src={logoPreview} alt="Business logo preview" /> : null}
+          {logoPreview ? <img className="image-preview" src={sanitizeImageUrl(logoPreview)} alt="Business logo preview" /> : null}
 
           <button className="button primary" disabled={isSaving}>
             {isSaving ? 'Saving profile...' : 'Save business profile'}
@@ -1081,7 +1094,7 @@ function CreatePost({ onPublish, business }: { onPublish: (post: Post) => void; 
           <h2>Preview</h2>
           <div className="preview-card">
             {imagePreview || draft.imageUrl ? (
-              <img src={imagePreview || draft.imageUrl} alt="Post preview" className="detail-image" />
+              <img src={sanitizeImageUrl(imagePreview || draft.imageUrl)} alt="Post preview" className="detail-image" />
             ) : (
               <div className="preview-placeholder">Image preview appears here</div>
             )}
