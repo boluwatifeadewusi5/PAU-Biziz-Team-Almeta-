@@ -11,3 +11,5 @@ PAU email is currently a placeholder, not an enforced domain restriction. Confir
 
 Seed listings illustrate layout and are not owner accounts. No invented contact number should be used. Followers, saves, and likes currently persist on the current device; shared social features are a separate database iteration.
 Email confirmations: add https://pau-biziz.vercel.app/auth/callback to Authentication > URL Configuration > Redirect URLs. Keep Site URL set to https://pau-biziz.vercel.app. Business role is stored in signup metadata; students go to /feed and business owners to /business/setup. Old links falling back to the homepage are handled as well.
+
+Email delivery: configure a provider under Authentication > Emails > SMTP Settings. Use a sender address on a domain you control, provider SMTP host/port/username/password, then adjust Authentication > Rate Limits to your provider capacity. Enter SMTP secrets in Supabase only, never VITE variables or Git. Leave confirmation enabled for PAU email verification. Built-in email service is limited to two emails per hour per project.
