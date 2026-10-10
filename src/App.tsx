@@ -180,10 +180,10 @@ function readStoredPosts(): Post[] {
 
 const fileToDataUrl = prepareImage
 
-function formatWhatsAppLink(number: string) {
+function formatWhatsAppLink(number: string, title?:string) {
   const normalized = number.replace(/[^\d+]/g, '')
-  const value = normalized.startsWith('+') ? normalized.slice(1) : normalized
-  return `https://wa.me/${value}`
+  const value = /^0\d{10}$/.test(normalized) ? '234' + normalized.slice(1) : normalized.startsWith('+') ? normalized.slice(1) : normalized
+  return `https://wa.me/${value}${title ? '?text=' + encodeURIComponent('Hi! I found your offer "' + title + '" on PAU biziz. Is it available?') : ''}`
 }
 
 function sanitizeImageUrl(url: string, fallback = 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=1200&q=80') {
@@ -532,6 +532,7 @@ function PostDetails({ posts, businesses }: { posts: Post[]; businesses: Busines
 
   return (
     <main className="route-shell post-details-shell">
+      <Link className="button secondary profile-back" to="/feed"><ChevronLeft size={17}/>Back to feed</Link>
       <Brand />
       <article className="surface-card post-details-card">
         <CampusImage category={post.category} src={sanitizeImageUrl(post.imageUrl)} alt={post.title} className="detail-image" />
@@ -561,7 +562,7 @@ function PostDetails({ posts, businesses }: { posts: Post[]; businesses: Busines
               <Link className="button secondary" to={`/businesses/${post.businessId}`}>
                 View business profile
               </Link>
-              <a className="button primary" aria-disabled={!business?.whatsapp} onClick={e=>{if(!business?.whatsapp)e.preventDefault()}} href={business?.whatsapp ? formatWhatsAppLink(business.whatsapp) : undefined} target="_blank" rel="noreferrer">
+              <a className="button primary" aria-disabled={!business?.whatsapp} onClick={e=>{if(!business?.whatsapp)e.preventDefault()}} href={business?.whatsapp ? formatWhatsAppLink(business.whatsapp,post.title) : undefined} target="_blank" rel="noreferrer">
                 <Phone size={16} /> {business?.whatsapp ? 'Contact on WhatsApp' : 'Contact details coming soon'}
               </a>
             </div>
@@ -600,6 +601,7 @@ function BusinessProfile({ businesses, posts }: { businesses: Business[]; posts:
 
   return (
     <main className="route-shell">
+      <Link className="button secondary profile-back" to="/feed"><ChevronLeft size={17}/>Back to feed</Link>
       <Brand />
       <section className="surface-card profile-card">
         <div className="profile-header">
@@ -997,6 +999,7 @@ export default function App() {
       <Route path="/account/edit" element={<ProfileEditor />} />
       <Route path="/account" element={<Account />} />
       <Route path="/signup" element={<AccountAccess mode="signup" />} />
+      {['/explore','/search','/saved','/following'].map(path=><Route key={path} path={path} element={<CampusFeed posts={posts} businesses={businesses}/>} />)}
       <Route path="/feed" element={<CampusFeed posts={posts} businesses={businesses} />} />
       <Route path="/posts/new" element={!currentUser() ? <Navigate to="/login?role=business" replace /> : !savedBusiness ? <Navigate to="/business/setup" replace /> : <CreatePost business={savedBusiness} onPublish={publishPost} />} />
       <Route path="/posts/:postId" element={<PostDetails posts={posts} businesses={businesses} />} />
@@ -1006,6 +1009,9 @@ export default function App() {
     </Routes>
   )
 }
+
+
+
 
 
 
