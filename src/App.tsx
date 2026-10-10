@@ -1,3 +1,4 @@
+import AdminAccounts from './AdminAccounts'
 import AdminDashboard from './AdminDashboard'
 import {directoryBusinesses,directoryPosts,mergeDirectory} from './directory'
 import MyBusinesses from './MyBusinesses'
@@ -1011,9 +1012,10 @@ export default function App() {
 
   return (
     <Routes>
+      <Route path="/admin/accounts" element={<CampusFeed posts={posts} businesses={businesses} page={<AdminAccounts/>}/>}/>
       <Route path="/admin" element={<CampusFeed posts={posts} businesses={businesses} page={<AdminDashboard/>}/>}/>
       <Route path="/admin/verify-businesses" element={<CampusFeed posts={posts} businesses={businesses} page={<AdminPage/>}/>}/>
-      <Route path="/admin/verified-list" element={<CampusFeed posts={posts} businesses={businesses} page={<AdminPage view="reference"/>}/>}/>
+      <Route path="/admin/verified-list" element={<CampusFeed posts={posts} businesses={businesses} page={<AdminPage/>}/>}/>
       <Route path="/admin/review-history" element={<CampusFeed posts={posts} businesses={businesses} page={<AdminHistory/>}/>}/>
       <Route path="/businesses/mine" element={currentUser()?<MyBusinesses businesses={ownedBusinesses} loading={!ownedLoaded} error={ownedError}/>:<Navigate to="/login" replace/>}/>
       <Route path="/business/new" element={currentUser()?<BusinessSetup key="new-business" currentBusiness={null} onSave={saveBusiness}/>:<Navigate to="/login?role=business" replace/>}/>

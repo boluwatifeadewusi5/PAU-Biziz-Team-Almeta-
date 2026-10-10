@@ -23,7 +23,7 @@ export async function persistBusiness(b:{id:string;name:string;description:strin
   const existing=await request('businesses','GET',undefined,`?owner_id=eq.${encodeURIComponent(session.user.id)}&select=id&order=created_at.desc&limit=1`)
   if(existing[0])id=existing[0].id
  }
- const updating=id!=='my-business';const rows=await request('businesses',updating?'PATCH':'POST',data,updating?`?id=eq.${encodeURIComponent(id)}`:'');if(!rows[0])throw new Error('No business was saved. Make sure you are signed in as its owner.');return rows[0]
+ const updating=id!=='my-business';const rows=await request('businesses',updating?'PATCH':'POST',updating?{name:b.name,description:b.description,category:b.category,whatsapp:b.whatsapp,logo_url:b.logoUrl}:data,updating?`?id=eq.${encodeURIComponent(id)}`:'');if(!rows[0])throw new Error('No business was saved. Make sure you are signed in as its owner.');return rows[0]
 }
 export async function persistPost(p:{businessId:string;title:string;description:string;category:string;imageUrl:string;price?:string;availability:string}){
  return (await request('posts','POST',{business_id:p.businessId,title:p.title,description:p.description,category:p.category,image_url:p.imageUrl,price:p.price,availability:p.availability}))[0]

@@ -1,3 +1,4 @@
+import AccountStatusNotice from './AccountStatusNotice'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { supabase, getSession, storeSession, accountDestination } from './auth'
@@ -15,5 +16,5 @@ export default function AuthBoundary({children}:{children:ReactNode}) {
  },[])
  if(error)return <main className="route-shell"><section className="surface-card"><h1>Let’s get you signed in.</h1><p role="alert">{error}</p><Link className="button primary" to="/login" onClick={()=>setError('')}>Continue to login</Link></section></main>
  if(!ready)return <main className="route-shell"><p role="status">Signing you in…</p></main>
- return children
+ return <><AccountStatusNotice/>{children}</>
 }
