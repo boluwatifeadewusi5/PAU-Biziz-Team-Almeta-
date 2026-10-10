@@ -11,7 +11,12 @@ def hash_password(password):
     return f"scrypt${salt}${digest}"
 
 def verify_password(password, stored):
-    _, salt, expected = stored.split("$")
+    try:
+        algorithm, salt, expected = stored.split("$")
+    except (ValueError, AttributeError):
+        return False
+    if algorithm != "scrypt" or len(salt) != 32 or len(expected) != 128:
+        return False
     actual = hashlib.scrypt(password.encode(), salt=salt.encode(), n=16384, r=8, p=1).hex()
     return hmac.compare_digest(actual, expected)
 
@@ -19,11 +24,12 @@ def token_digest(token):
     return hashlib.sha256(token.encode()).hexdigest()
 
 def current_owner(authorization):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(401, "Please log in")
-    owner = query("SELECT id FROM owners WHERE token_hash = ? AND token_expires > ?", (token_digest(authorization[7:]), int(time.time())), one=True)
+    parts = authorization.split() if authorization else []
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise HTTPException(401, "Please log in", headers={"WWW-Authenticate": "Bearer"})
+    owner = query("SELECT id FROM owners WHERE token_hash = ? AND token_expires > ?", (token_digest(parts[1]), int(time.time())), one=True)
     if not owner:
-        raise HTTPException(401, "Please log in")
+        raise HTTPException(401, "Please log in", headers={"WWW-Authenticate": "Bearer"})
     return owner["id"]
 
 
