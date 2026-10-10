@@ -1,3 +1,6 @@
+import CampusImage from './CampusImage'
+import SocialActions from './SocialActions'
+import { categoryImage } from './media'
 import ProfileEditor from './ProfileEditor'
 import { prepareImage } from './images'
 import { backendReady, currentUser } from './auth'
@@ -86,7 +89,7 @@ const sampleBusinesses: Business[] = [
     whatsapp: '',
     email: '',
     location: 'Main Cafeteria Walkway, PAU',
-    logoUrl: 'https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=200&q=80',
+    logoUrl: 'https://images.unsplash.com/photo-1464305795204-6f5bbfc7fb81?auto=format&fit=crop&w=200&q=80',
   },
   {
     id: 'campus-cuts',
@@ -96,7 +99,7 @@ const sampleBusinesses: Business[] = [
     whatsapp: '',
     email: '',
     location: 'Hostel Square, PAU',
-    logoUrl: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=200&q=80',
+    logoUrl: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=200&q=80',
   },
   {
     id: 'laptop-fixers',
@@ -129,7 +132,7 @@ const samplePosts: Post[] = [
     title: 'Off-campus transportation',
     description: 'Explore off-campus transportation with Aleftav Shuttle. Request current routes and pickup information from the business owner.',
     category: 'Transport',
-    imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1200&q=80',
     price: undefined,
     availability: 'Contact owner for current schedule',
   },
@@ -177,10 +180,10 @@ function readStoredPosts(): Post[] {
 
 const fileToDataUrl = prepareImage
 
-function formatWhatsAppLink(number: string) {
+function formatWhatsAppLink(number: string, title?:string) {
   const normalized = number.replace(/[^\d+]/g, '')
-  const value = normalized.startsWith('+') ? normalized.slice(1) : normalized
-  return `https://wa.me/${value}`
+  const value = /^0\d{10}$/.test(normalized) ? '234' + normalized.slice(1) : normalized.startsWith('+') ? normalized.slice(1) : normalized
+  return `https://wa.me/${value}${title ? '?text=' + encodeURIComponent('Hi! I found your offer "' + title + '" on PAU biziz. Is it available?') : ''}`
 }
 
 function sanitizeImageUrl(url: string, fallback = 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=1200&q=80') {
@@ -438,7 +441,7 @@ function Feed({ posts, businesses }: { posts: Post[]; businesses: Business[] }) 
           <div className="post-grid">
             {filteredPosts.map((post) => (
               <article key={post.id} className="post-card">
-                <img src={sanitizeImageUrl(post.imageUrl)} alt={post.title} />
+                <CampusImage category={post.category} src={sanitizeImageUrl(post.imageUrl)} alt={post.title} />
                 <div className="post-card-body">
                   <small>{post.category}</small>
                   <h3>{post.title}</h3>
@@ -471,7 +474,7 @@ function Feed({ posts, businesses }: { posts: Post[]; businesses: Business[] }) 
           <div className="business-list">
             {businesses.map((business) => (
               <Link key={business.id} to={`/businesses/${business.id}`} className="business-list-item">
-                <img src={sanitizeImageUrl(business.logoUrl)} alt={`${business.name} logo`} />
+                <CampusImage category={business.category} src={sanitizeImageUrl(business.logoUrl)} alt={`${business.name} logo`} />
                 <span>
                   <strong>{business.name}</strong>
                   <small>{business.category}</small>
@@ -529,9 +532,10 @@ function PostDetails({ posts, businesses }: { posts: Post[]; businesses: Busines
 
   return (
     <main className="route-shell post-details-shell">
+      <Link className="button secondary profile-back" to="/feed"><ChevronLeft size={17}/>Back to feed</Link>
       <Brand />
       <article className="surface-card post-details-card">
-        <img src={sanitizeImageUrl(post.imageUrl)} alt={post.title} className="detail-image" />
+        <CampusImage category={post.category} src={sanitizeImageUrl(post.imageUrl)} alt={post.title} className="detail-image" />
         <div className="detail-content">
           <small>{post.category}</small>
           <h1>{post.title}</h1>
@@ -546,6 +550,7 @@ function PostDetails({ posts, businesses }: { posts: Post[]; businesses: Busines
               <p>{post.availability}</p>
             </div>
           </div>
+          <SocialActions postId={post.id}/>
           <section className="seller-card">
             <h2>Seller information</h2>
             <p>
@@ -557,7 +562,7 @@ function PostDetails({ posts, businesses }: { posts: Post[]; businesses: Busines
               <Link className="button secondary" to={`/businesses/${post.businessId}`}>
                 View business profile
               </Link>
-              <a className="button primary" aria-disabled={!business?.whatsapp} onClick={e=>{if(!business?.whatsapp)e.preventDefault()}} href={business?.whatsapp ? formatWhatsAppLink(business.whatsapp) : undefined} target="_blank" rel="noreferrer">
+              <a className="button primary" aria-disabled={!business?.whatsapp} onClick={e=>{if(!business?.whatsapp)e.preventDefault()}} href={business?.whatsapp ? formatWhatsAppLink(business.whatsapp,post.title) : undefined} target="_blank" rel="noreferrer">
                 <Phone size={16} /> {business?.whatsapp ? 'Contact on WhatsApp' : 'Contact details coming soon'}
               </a>
             </div>
@@ -596,10 +601,11 @@ function BusinessProfile({ businesses, posts }: { businesses: Business[]; posts:
 
   return (
     <main className="route-shell">
+      <Link className="button secondary profile-back" to="/feed"><ChevronLeft size={17}/>Back to feed</Link>
       <Brand />
       <section className="surface-card profile-card">
         <div className="profile-header">
-          <img src={sanitizeImageUrl(business.logoUrl)} alt={`${business.name} logo`} />
+          <CampusImage category={business.category} src={sanitizeImageUrl(business.logoUrl)} alt={`${business.name} logo`} />
           <div>
             <small>{business.category}</small>
             <h1>{business.name}</h1>
@@ -619,7 +625,7 @@ function BusinessProfile({ businesses, posts }: { businesses: Business[]; posts:
           <div className="profile-posts">
             {businessPosts.map((post) => (
               <Link key={post.id} to={`/posts/${post.id}`} className="profile-post-item">
-                <img src={sanitizeImageUrl(post.imageUrl)} alt={post.title} />
+                <CampusImage category={post.category} src={sanitizeImageUrl(post.imageUrl)} alt={post.title} />
                 <span>
                   <strong>{post.title}</strong>
                   <small>{post.price || 'Price on request'} · {post.availability}</small>
@@ -640,6 +646,7 @@ function BusinessProfile({ businesses, posts }: { businesses: Business[]; posts:
 }
 
 function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Business) => void; currentBusiness: Business | null }) {
+  const navigate = useNavigate()
   const [draft, setDraft] = useState<BusinessDraft>({
     name: currentBusiness?.name || '',
     description: currentBusiness?.description || '',
@@ -696,12 +703,13 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
       whatsapp: draft.whatsapp.trim(),
       email: '',
       location: 'PAU campus',
-      logoUrl: savedLogo || 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&w=200&q=80',
+      logoUrl: savedLogo || categoryImage(draft.category,200),
     }
 
     try { await onSave(savedBusiness) } catch(error) { setErrors({name: error instanceof Error ? error.message : 'Unable to save'}); setIsSaving(false); return }
     setIsSaving(false)
     setIsSaved(true)
+    navigate('/feed', {replace:true})
   }
 
   return (
@@ -760,14 +768,14 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
           <label htmlFor="business-logo-file">Or upload logo (optional)</label>
           <input id="business-logo-file" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { void handleFileChange(event.target.files?.[0] || null).catch(error => setErrors({image: error.message, name:error.message})); }} />
 
-          {logoPreview ? <><img className="image-preview" src={sanitizeImageUrl(logoPreview)} alt="Business logo preview" /><button type="button" className="button secondary" onClick={()=>{setLogoPreview('');setLogoFile(null);update('logoUrl','')}}>Remove logo</button></> : null}
+          {logoPreview ? <><CampusImage className="image-preview" src={sanitizeImageUrl(logoPreview)} alt="Business logo preview" /><button type="button" className="button secondary" onClick={()=>{setLogoPreview('');setLogoFile(null);update('logoUrl','')}}>Remove logo</button></> : null}
 
           <button className="button primary" disabled={isSaving}>
             {isSaving ? 'Saving profile...' : 'Save business profile'}
           </button>
         </form>
 
-        {isSaved ? <p className="success-pill">Business profile saved. <Link to="/posts/new">Create your first post →</Link></p> : null}
+        {isSaved ? <p className="success-pill">Business profile saved. <Link to="/feed">Go to feed →</Link></p> : null}
       </section>
     </main>
   )
@@ -796,6 +804,7 @@ function CreatePost({ onPublish, business }: { onPublish: (post: Post) => void; 
     if (!draft.title.trim()) nextErrors.title = 'Post title is required.'
     if (!draft.description.trim()) nextErrors.description = 'Post description is required.'
     if (!draft.availability.trim()) nextErrors.availability = 'Please describe availability.'
+    if(draft.imageUrl.trim()){try{if(new URL(draft.imageUrl.trim()).pathname==='/' )nextErrors.image='Use a direct image link, not a website homepage, or upload your photo.'}catch{nextErrors.image='Enter a valid image URL or upload a photo.'}}
     if (!imagePreview && !draft.imageUrl.trim()) nextErrors.image = 'Add an image URL or upload a file.'
     return nextErrors
   }
@@ -918,7 +927,7 @@ function CreatePost({ onPublish, business }: { onPublish: (post: Post) => void; 
           <h2>Preview</h2>
           <div className="preview-card">
             {imagePreview || draft.imageUrl ? (
-              <img src={sanitizeImageUrl(imagePreview || draft.imageUrl)} alt="Post preview" className="detail-image" />
+              <CampusImage src={sanitizeImageUrl(imagePreview || draft.imageUrl)} alt="Post preview" className="detail-image" />
             ) : (
               <div className="preview-placeholder">Image preview appears here</div>
             )}
@@ -956,7 +965,7 @@ export default function App() {
   const [remoteBusinesses, setRemoteBusinesses] = useState<Business[]>([])
   const [remotePosts, setRemotePosts] = useState<Post[]>([])
   useEffect(() => { if (!backendReady) return; Promise.all([listBusinesses(),listPosts()]).then(([bs,ps])=>{
-    const mapped=bs.map((b:any)=>({...b,logoUrl:b.logo_url,email:'',location:'PAU campus'}));setRemoteBusinesses(mapped);
+    const preferred=bs.filter((b:any)=>!bs.some((other:any)=>other.id!==b.id&&other.owner_id===b.owner_id&&other.name.trim().toLowerCase()===b.name.trim().toLowerCase()&&ps.some((p:any)=>p.business_id===other.id)&&!ps.some((p:any)=>p.business_id===b.id)));const mapped=preferred.map((b:any)=>({...b,logoUrl:!b.logo_url || b.logo_url.includes('photo-1556157382-97eda2d62296') ? categoryImage(b.category,200) : b.logo_url,email:'',location:'PAU campus'}));setRemoteBusinesses(mapped);
     setRemotePosts(ps.map((p:any)=>({...p,businessId:p.business_id,businessName:mapped.find((b:Business)=>b.id===p.business_id)?.name||'Campus business',imageUrl:p.image_url})));
     const session=JSON.parse(localStorage.getItem('biziz-session')||'null');const mine=mapped.find((b:any)=>b.owner_id===session?.user?.id);setSavedBusiness(mine || null)
   }).catch(()=>{}); }, [routeLocation.pathname])
@@ -966,7 +975,7 @@ export default function App() {
     return [savedBusiness, ...remoteBusinesses.filter(b=>b.id!==savedBusiness.id), ...rest]
   }, [savedBusiness, remoteBusinesses])
 
-  const posts = useMemo(() => [...createdPosts, ...remotePosts, ...samplePosts], [createdPosts, remotePosts])
+  const posts = useMemo(() => Array.from(new Map([...samplePosts,...remotePosts,...createdPosts].map(p=>[p.id,p])).values()).reverse(), [createdPosts, remotePosts])
 
   const saveBusiness = async (business: Business) => {
     const row = await persistBusiness(business); business = {...business,id:row.id}
@@ -990,6 +999,7 @@ export default function App() {
       <Route path="/account/edit" element={<ProfileEditor />} />
       <Route path="/account" element={<Account />} />
       <Route path="/signup" element={<AccountAccess mode="signup" />} />
+      {['/explore','/search','/saved','/following'].map(path=><Route key={path} path={path} element={<CampusFeed posts={posts} businesses={businesses}/>} />)}
       <Route path="/feed" element={<CampusFeed posts={posts} businesses={businesses} />} />
       <Route path="/posts/new" element={!currentUser() ? <Navigate to="/login?role=business" replace /> : !savedBusiness ? <Navigate to="/business/setup" replace /> : <CreatePost business={savedBusiness} onPublish={publishPost} />} />
       <Route path="/posts/:postId" element={<PostDetails posts={posts} businesses={businesses} />} />
@@ -999,5 +1009,11 @@ export default function App() {
     </Routes>
   )
 }
+
+
+
+
+
+
 
 
