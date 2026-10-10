@@ -1,7 +1,10 @@
 import { createClient, type Session } from '@supabase/supabase-js'
 const url = import.meta.env.VITE_SUPABASE_URL?.trim()
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim()
-export const backendReady = Boolean(url && key)
+export const studentEmailDomain=(import.meta.env.VITE_STUDENT_EMAIL_DOMAIN||'pau.edu.ng').trim().toLowerCase().replace(/^@/,'')
+export function isStudentEmail(email:string){const normalized=email.trim().toLowerCase();return /^[^\s@]+@[^\s@]+$/.test(normalized)&&normalized.split('@')[1]===studentEmailDomain}
+function validBackendUrl(value:string|undefined){try{return Boolean(value)&&['http:','https:'].includes(new URL(value!).protocol)}catch{return false}}
+export const backendReady = Boolean(validBackendUrl(url) && key && key!=='[SENSITIVE]')
 export const supabase = backendReady ? createClient(url!, key!, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit' } }) : null
 let activeSession: Session | null = null
 export function storeSession(session: Session | null) {
@@ -20,9 +23,10 @@ export function currentUser(): {name:string;email:string;role:string} | null {
  const user = activeSession?.user
  return user ? {name:user.user_metadata?.name || 'PAU student',email:user.email || '',role:user.user_metadata?.role || localStorage.getItem('biziz-signup-role') || 'student'} : null
 }
-export function accountDestination() { return currentUser()?.role === 'business' ? '/business/setup' : '/feed' }
+export function accountDestination() { if(currentUser()?.email.toLowerCase()==='bensagie4@gmail.com')return '/admin';return currentUser()?.role === 'business' ? '/business/setup' : '/feed' }
 export async function authenticate(mode:'login'|'signup',email:string,password:string,name='',role='student') {
  if(!supabase) throw new Error('Account access is being connected. You can explore businesses while setup is completed.')
+ if(mode==='signup'&&!isStudentEmail(email))throw new Error(`Student signup requires your @${studentEmailDomain} email. Admins use their existing admin login.`)
  if(mode==='signup') localStorage.setItem('biziz-signup-role',role)
  const result=mode==='signup' ? await supabase.auth.signUp({email,password,options:{data:{name,role},emailRedirectTo:`${window.location.origin}/auth/callback`}}) : await supabase.auth.signInWithPassword({email,password})
  if(result.error) throw result.error

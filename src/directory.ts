@@ -1,0 +1,11 @@
+const entries=[
+ {id:'nonyes-pasta',name:'Nonye’s Pasta',ownerName:'Attah Chukwunonyelum',description:'Pasta meals to order, catering and delivery.',category:'Food & drinks' as const,image:'pasta',title:'Pasta meals, catering & delivery'},
+ {id:'suya-plug',name:'Suya Plug',ownerName:'Juliet Alabojuto',description:'Suya and grills, evenings at the Student Centre.',category:'Food & drinks' as const,image:'suya',title:'Suya & grills at the Student Centre'},
+ {id:'cherie-coco',name:'Cherie_CoCo_Essence',ownerName:'Joy Samuel',description:'Perfumes, body mists and lip gloss.',category:'Beauty & grooming' as const,image:'perfumes',title:'Perfumes, body mists & lip gloss'},
+ {id:'blazers-robotics',name:'Blazers Robotics',ownerName:'Oryiman Adongo',description:'Robotics and IoT parts, 3D printing.',category:'Tech & services' as const,image:'robotics',title:'Robotics, IoT parts & 3D printing'},
+ {id:'book-runner',name:'Book Runner',ownerName:'Emmanuel Mensah',description:'Textbooks, notebooks, lab coats and stationery.',category:'Academic support' as const,image:'books',title:'Your campus study essentials'},
+ {id:'lucy-creations',name:'Lucy Creations',ownerName:'Mary Fagbohun',description:'Packaged snacks, delivered on campus.',category:'Food & drinks' as const,image:'snacks',title:'Packaged snacks, campus delivery'},
+]
+export const directoryBusinesses=entries.map(e=>({id:'directory-'+e.id,name:e.name,ownerName:e.ownerName,description:e.description,category:e.category,logoUrl:`/images/directory-${e.image}.svg`,whatsapp:'',email:'',location:'PAU campus',isDirectory:true}))
+export const directoryPosts=entries.map(e=>({id:'directory-offer-'+e.id,businessId:'directory-'+e.id,businessName:e.name,title:e.title,description:e.description,category:e.category,imageUrl:`/images/directory-${e.image}.svg`,availability:'Ask the owner for current availability. Contact details are being added.',isDirectory:true}))
+export function mergeDirectory<T extends {id:string;name:string}>(registered:T[],directory:T[]){const normalize=(name:string)=>name.toLowerCase().replace(/[^a-z0-9]/g,'');return [...registered,...directory.filter(d=>!registered.some(r=>normalize(r.name)===normalize(d.name)))]}

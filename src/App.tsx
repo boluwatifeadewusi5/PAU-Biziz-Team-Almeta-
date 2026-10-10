@@ -1,3 +1,5 @@
+import AdminDashboard from './AdminDashboard'
+import {directoryBusinesses,directoryPosts,mergeDirectory} from './directory'
 import MyBusinesses from './MyBusinesses'
 import ChoosePostBusiness from './ChoosePostBusiness'
 import AdminHistory from './AdminHistory'
@@ -52,6 +54,8 @@ type Business = {
   logoUrl: string
   approval_status?: 'pending'|'approved'|'rejected'
   review_note?: string
+  isDirectory?:boolean
+  ownerName?:string
 }
 
 type Post = {
@@ -64,6 +68,7 @@ type Post = {
   imageUrl: string
   price?: string
   availability: string
+  isDirectory?:boolean
 }
 
 type BusinessDraft = {
@@ -197,7 +202,7 @@ function formatWhatsAppLink(number: string, title?:string) {
 function sanitizeImageUrl(url: string, fallback = 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=1200&q=80') {
   const value = url.trim()
   if (!value) return fallback
-  if (value.startsWith('data:image/')) return value
+  if (value.startsWith('data:image/')||value.startsWith('/')&&!value.startsWith('//')) return value
   try {
     const parsed = new URL(value, 'https://pau-biziz.local')
     if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return parsed.toString()
@@ -558,7 +563,7 @@ function PostDetails({ posts, businesses }: { posts: Post[]; businesses: Busines
               <p>{post.availability}</p>
             </div>
           </div>
-          <SocialActions postId={post.id}/>
+          {post.isDirectory?<p className="directory-source">PAU campus directory · Owner: {business?.ownerName}</p>:<SocialActions postId={post.id}/>}
           <section className="seller-card">
             <h2>Seller information</h2>
             <p>
@@ -617,11 +622,11 @@ function BusinessProfile({ businesses, posts }: { businesses: Business[]; posts:
           <div>
             <small>{business.category}</small>
             <h1>{business.name}</h1>
-            <p>{business.description}</p>
+            <p>{business.description}</p>{business.isDirectory&&<p className="directory-source">PAU campus directory · {business.ownerName}</p>}
           </div>
         </div>
         <div className="contact-row">
-          <a href={formatWhatsAppLink(business.whatsapp)} target="_blank" rel="noreferrer">
+          <a href={business.whatsapp?formatWhatsAppLink(business.whatsapp):undefined} aria-disabled={!business.whatsapp} onClick={e=>{if(!business.whatsapp)e.preventDefault()}} target="_blank" rel="noreferrer">
             <Phone size={16} /> {business.whatsapp || 'Contact details coming soon'}
           </a>
           <span>{business.email}</span>
@@ -982,8 +987,8 @@ export default function App() {
     const session=JSON.parse(localStorage.getItem('biziz-session')||'null');const ownedMapped=owned.map((b:any)=>({...b,logoUrl:b.logo_url||categoryImage(b.category,200),email:'',location:'PAU campus'}));setOwnedBusinesses(ownedMapped);setOwnedLoaded(true);setOwnedError('');const mine=owned.find((b:any)=>b.id===selectedBusinessId)||owned.find((b:any)=>b.owner_id===session?.user?.id&&ps.some((p:any)=>p.business_id===b.id))||owned.find((b:any)=>b.owner_id===session?.user?.id);setSavedBusiness(mine?{...mine,logoUrl:mine.logo_url||categoryImage(mine.category,200),email:'',location:'PAU campus'}:null)
   }).catch(e=>{setOwnedLoaded(true);setOwnedError(e.message||'Unable to load your businesses.');}); }, [routeLocation.pathname,selectedBusinessId])
   const activeBusiness=selectedBusinessId?ownedBusinesses.find(b=>b.id===selectedBusinessId)||null:savedBusiness
-  const businesses = useMemo(() => backendReady?remoteBusinesses:sampleBusinesses,[remoteBusinesses])
-  const posts = useMemo(() => backendReady?remotePosts:samplePosts,[remotePosts])
+  const businesses = useMemo(() => mergeDirectory(remoteBusinesses,directoryBusinesses),[remoteBusinesses])
+  const posts = useMemo(() => [...remotePosts,...directoryPosts.filter(p=>businesses.some(b=>b.id===p.businessId))],[remotePosts,businesses])
 
   const saveBusiness = async (business: Business) => {
     const row = await persistBusiness(business,{createNew:business.id===MY_BUSINESS_ID}); business = {...business,id:row.id,approval_status:row.approval_status,review_note:row.review_note}
@@ -1006,7 +1011,7 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/admin" element={<Navigate to="/admin/verify-businesses" replace/>}/>
+      <Route path="/admin" element={<CampusFeed posts={posts} businesses={businesses} page={<AdminDashboard/>}/>}/>
       <Route path="/admin/verify-businesses" element={<CampusFeed posts={posts} businesses={businesses} page={<AdminPage/>}/>}/>
       <Route path="/admin/verified-list" element={<CampusFeed posts={posts} businesses={businesses} page={<AdminPage view="reference"/>}/>}/>
       <Route path="/admin/review-history" element={<CampusFeed posts={posts} businesses={businesses} page={<AdminHistory/>}/>}/>
