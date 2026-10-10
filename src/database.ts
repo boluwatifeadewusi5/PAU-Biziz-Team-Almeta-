@@ -23,3 +23,8 @@ export async function persistBusiness(b:{id:string;name:string;description:strin
 export async function persistPost(p:{businessId:string;title:string;description:string;category:string;imageUrl:string;price?:string;availability:string}){
  return (await request('posts','POST',{business_id:p.businessId,title:p.title,description:p.description,category:p.category,image_url:p.imageUrl,price:p.price,availability:p.availability}))[0]
 }
+export async function updatePost(id:string,p:{title:string;description:string;category:string;imageUrl:string;price?:string;availability:string}){
+ const rows=await request('posts','PATCH',{title:p.title,description:p.description,category:p.category,image_url:p.imageUrl,price:p.price||null,availability:p.availability},`?id=eq.${encodeURIComponent(id)}`)
+ if(!rows[0])throw new Error('Only the business owner can edit this post.')
+ return rows[0]
+}

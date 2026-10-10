@@ -5,6 +5,7 @@ import ProfileEditor from './ProfileEditor'
 import { prepareImage } from './images'
 import { backendReady, currentUser } from './auth'
 import { listBusinesses, listPosts, persistBusiness, persistPost } from './database'
+import ManagePosts from './ManagePosts'
 import CampusFeed from './CampusFeed'
 import { AccountAccess, Account } from './AccountScreens'
 import './campus.css'
@@ -994,6 +995,7 @@ export default function App() {
 
   return (
     <Routes>
+      {['/posts/manage','/posts/:postId/edit'].map(path=><Route key={path} path={path} element={<ManagePosts onUpdated={row=>{const change=(p:Post)=>p.id===row.id?{...p,...row,category:row.category as Category,imageUrl:row.image_url}:p;setRemotePosts(state=>state.map(change));setCreatedPosts(state=>{const next=state.map(change);localStorage.setItem(POSTS_STORAGE_KEY,JSON.stringify(next));return next})}}/>}/>)}
       <Route path="/" element={<Welcome />} />
       <Route path="/login" element={<AccountAccess mode="login" />} />
       <Route path="/account/edit" element={<ProfileEditor />} />
