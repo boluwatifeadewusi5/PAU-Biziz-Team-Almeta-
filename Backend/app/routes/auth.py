@@ -21,5 +21,15 @@ def login(body: LoginIn):
 @router.post("/auth/logout")
 def logout(authorization: Optional[str] = Header(None)):
     owner_id = current_owner(authorization)
-    execute("UPDATE owners SET token_hash=NULL, token_expires=NULL WHERE id=?", (owner_id,))
+    execute("UPDATE owners SET token_hash=NULL, token_expires=NULL WHERE id=? AND token_hash=?", (owner_id, token_digest(authorization.split()[1])))
     return {"logged_out": True}
+
+
+@router.get("/auth/me")
+def me(authorization: Optional[str] = Header(None)):
+    """Restore the owner's dashboard session without exposing stored credentials."""
+    owner_id = current_owner(authorization)
+    owner = query("SELECT id, username FROM owners WHERE id=?", (owner_id,), one=True)
+    business = query("SELECT id FROM businesses WHERE owner_id=?", (owner_id,), one=True)
+    return {**owner, "has_business": business is not None,
+            "business_id": business["id"] if business else None}
