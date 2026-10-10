@@ -1,4 +1,9 @@
-import { type FormEvent, useMemo, useState } from 'react'
+import { backendReady } from './auth'
+import { listBusinesses, listPosts, persistBusiness, persistPost } from './database'
+import CampusFeed from './CampusFeed'
+import { AccountAccess, Account } from './AccountScreens'
+import './campus.css'
+import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { Link, NavLink, Route, Routes, useNavigate, useParams, useLocation } from 'react-router-dom'
 import {
   ArrowRight,
@@ -23,7 +28,7 @@ import {
 } from 'lucide-react'
 
 type Role = 'student' | 'business'
-type Category = 'Food & drinks' | 'Beauty & grooming' | 'Tech & services' | 'Fashion' | 'Academic support' | 'Wellness' | 'Other'
+type Category = 'Food & drinks' | 'Beauty & grooming' | 'Tech & services' | 'Fashion' | 'Academic support' | 'Wellness' | 'Transport' | 'Other'
 
 type Business = {
   id: string
@@ -68,26 +73,26 @@ type CreatePostDraft = {
 const BUSINESS_STORAGE_KEY = 'pau-biziz-business'
 const POSTS_STORAGE_KEY = 'pau-biziz-created-posts'
 const MY_BUSINESS_ID = 'my-business'
-const CATEGORIES: Category[] = ['Food & drinks', 'Beauty & grooming', 'Tech & services', 'Fashion', 'Academic support', 'Wellness', 'Other']
+const CATEGORIES: Category[] = ['Food & drinks', 'Beauty & grooming', 'Tech & services', 'Fashion', 'Academic support', 'Wellness', 'Transport', 'Other']
 
 const sampleBusinesses: Business[] = [
   {
     id: 'snack-hub',
-    name: 'The Snack Hub',
-    description: 'Fresh pastries, chilled drinks, and quick energy for your studio and lecture breaks.',
+    name: 'Sweet Discovery',
+    description: 'Snacks for the PAU community. Business details are awaiting owner confirmation.',
     category: 'Food & drinks',
-    whatsapp: '+234 803 100 0011',
-    email: 'hello@snackhub.demo',
+    whatsapp: '',
+    email: '',
     location: 'Main Cafeteria Walkway, PAU',
     logoUrl: 'https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=200&q=80',
   },
   {
     id: 'campus-cuts',
-    name: 'Campus Cuts',
-    description: 'Student-friendly haircuts and grooming sessions that fit your class schedule.',
-    category: 'Beauty & grooming',
-    whatsapp: '+234 812 222 7788',
-    email: 'bookings@campuscuts.demo',
+    name: 'Aleftav Shuttle',
+    description: 'Off-campus transportation for the PAU community. Contact details and schedules will be added by the business owner.',
+    category: 'Transport',
+    whatsapp: '',
+    email: '',
     location: 'Hostel Square, PAU',
     logoUrl: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=200&q=80',
   },
@@ -96,8 +101,8 @@ const sampleBusinesses: Business[] = [
     name: 'Laptop Fixers',
     description: 'Fast troubleshooting, software cleanup, and accessory recommendations by classmates.',
     category: 'Tech & services',
-    whatsapp: '+234 814 500 4412',
-    email: 'support@laptopfixers.demo',
+    whatsapp: '',
+    email: '',
     location: 'Innovation Hub, PAU',
     logoUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=200&q=80',
   },
@@ -107,24 +112,24 @@ const samplePosts: Post[] = [
   {
     id: 'post-coffee-box',
     businessId: 'snack-hub',
-    businessName: 'The Snack Hub',
+    businessName: 'Sweet Discovery',
     title: 'Breakfast Combo Box',
-    description: 'Butter croissant, fruit cup, and iced coffee packed fresh for your 8 a.m. class.',
+    description: 'Discover snacks from Sweet Discovery. Ask the owner about the current menu and availability.',
     category: 'Food & drinks',
     imageUrl: 'https://images.unsplash.com/photo-1464305795204-6f5bbfc7fb81?auto=format&fit=crop&w=1200&q=80',
-    price: '₦2,500',
-    availability: 'Available today · Pickup before 11:30 a.m.',
+    price: undefined,
+    availability: 'Ask owner for availability',
   },
   {
     id: 'post-braids',
     businessId: 'campus-cuts',
-    businessName: 'Campus Cuts',
-    title: 'Protective Braids Appointment',
-    description: 'Neat knotless braids with style consultation. Student slots every evening from 5 p.m.',
-    category: 'Beauty & grooming',
+    businessName: 'Aleftav Shuttle',
+    title: 'Off-campus transportation',
+    description: 'Explore off-campus transportation with Aleftav Shuttle. Request current routes and pickup information from the business owner.',
+    category: 'Transport',
     imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1200&q=80',
-    price: 'From ₦10,000',
-    availability: '4 spots left this week',
+    price: undefined,
+    availability: 'Contact owner for current schedule',
   },
   {
     id: 'post-laptop-service',
@@ -140,8 +145,8 @@ const samplePosts: Post[] = [
 ]
 
 const discoveries = [
-  { name: 'The Snack Hub', category: 'Food & drinks', title: 'Your next study-break craving.', icon: Coffee, style: 'food', label: 'Fresh on campus', price: 'Small bites. Big mood.' },
-  { name: 'Campus Cuts', category: 'Beauty & grooming', title: 'A fresh look, between lectures.', icon: Scissors, style: 'beauty', label: 'Made for your schedule', price: 'Your campus glow-up.' },
+  { name: 'Sweet Discovery', category: 'Food & drinks', title: 'Your next study-break craving.', icon: Coffee, style: 'food', label: 'Fresh on campus', price: 'Small bites. Big mood.' },
+  { name: 'Aleftav Shuttle', category: 'Transport', title: 'A fresh look, between lectures.', icon: Scissors, style: 'beauty', label: 'Made for your schedule', price: 'Your campus glow-up.' },
   { name: 'Laptop Fixers', category: 'Tech & services', title: 'Back to work. Without the stress.', icon: Laptop, style: 'tech', label: 'Help, close to home', price: 'Good people. Smart fixes.' },
 ]
 
@@ -252,7 +257,7 @@ function Welcome() {
             </div>
             <div className="secondary-actions">
               <Link className="text-link" to="/feed">
-                Explore demo businesses <ArrowRight size={16} />
+                Explore businesses <ArrowRight size={16} />
               </Link>
             </div>
           </div>
@@ -272,7 +277,7 @@ function Welcome() {
               </li>
               <li>
                 <Sparkles size={15} />
-                Start now with a short demo signup flow
+                Discover your campus community
               </li>
             </ul>
           </aside>
@@ -511,7 +516,7 @@ function PostDetails({ posts, businesses }: { posts: Post[]; businesses: Busines
         <Brand />
         <div className="surface-card not-found-card">
           <h1>Post not found</h1>
-          <p>That post may have been removed from this demo feed. Return to feed and pick another offer.</p>
+          <p>That post may have been removed from the feed. Return to feed and pick another offer.</p>
           <div className="inline-actions">
             <Link className="button primary" to="/feed">
               Back to feed
@@ -557,8 +562,8 @@ function PostDetails({ posts, businesses }: { posts: Post[]; businesses: Busines
               <Link className="button secondary" to={`/businesses/${post.businessId}`}>
                 View business profile
               </Link>
-              <a className="button primary" href={formatWhatsAppLink(business?.whatsapp || '+234000000000')} target="_blank" rel="noreferrer">
-                <Phone size={16} /> Contact on WhatsApp
+              <a className="button primary" aria-disabled={!business?.whatsapp} onClick={e=>{if(!business?.whatsapp)e.preventDefault()}} href={business?.whatsapp ? formatWhatsAppLink(business.whatsapp) : undefined} target="_blank" rel="noreferrer">
+                <Phone size={16} /> {business?.whatsapp ? 'Contact on WhatsApp' : 'Contact details coming soon'}
               </a>
             </div>
           </section>
@@ -578,7 +583,7 @@ function BusinessProfile({ businesses, posts }: { businesses: Business[]; posts:
         <Brand />
         <div className="surface-card not-found-card">
           <h1>Business not found</h1>
-          <p>We could not find that business in the current demo data.</p>
+          <p>We could not find that business in the directory.</p>
           <div className="inline-actions">
             <Link className="button primary" to="/feed">
               Back to feed
@@ -608,7 +613,7 @@ function BusinessProfile({ businesses, posts }: { businesses: Business[]; posts:
         </div>
         <div className="contact-row">
           <a href={formatWhatsAppLink(business.whatsapp)} target="_blank" rel="noreferrer">
-            <Phone size={16} /> {business.whatsapp}
+            <Phone size={16} /> {business.whatsapp || 'Contact details coming soon'}
           </a>
           <span>{business.email}</span>
           <span>{business.location}</span>
@@ -695,12 +700,12 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
       description: draft.description.trim(),
       category: draft.category,
       whatsapp: draft.whatsapp.trim(),
-      email: 'yourbiz@pau.demo',
+      email: '',
       location: 'PAU campus',
       logoUrl: savedLogo || 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&w=200&q=80',
     }
 
-    onSave(savedBusiness)
+    try { await onSave(savedBusiness) } catch(error) { setErrors({name: error instanceof Error ? error.message : 'Unable to save'}); setIsSaving(false); return }
     setIsSaving(false)
     setIsSaved(true)
   }
@@ -711,7 +716,7 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
       <section className="surface-card form-card">
         <span className="eyebrow route-eyebrow">BUSINESS SETUP</span>
         <h1>Set up your business profile</h1>
-        <p>Saved data stays in your browser using localStorage for this demo experience.</p>
+        <p>Introduce your business to the PAU community.</p>
 
         <form className="stack-form" onSubmit={submit} noValidate>
           <label htmlFor="business-name">Business name</label>
@@ -768,7 +773,7 @@ function BusinessSetup({ onSave, currentBusiness }: { onSave: (business: Busines
           </button>
         </form>
 
-        {isSaved ? <p className="success-pill">Saved. Your business profile is now available in this demo feed.</p> : null}
+        {isSaved ? <p className="success-pill">Business profile saved.</p> : null}
       </section>
     </main>
   )
@@ -834,7 +839,7 @@ function CreatePost({ onPublish, business }: { onPublish: (post: Post) => void; 
       businessName: business?.name || sampleBusinesses[0].name,
     }
 
-    onPublish(nextPost)
+    try { await onPublish(nextPost) } catch(error) { setErrors({title: error instanceof Error ? error.message : 'Unable to publish'}); setIsPublishing(false); return }
     setIsPublishing(false)
     setPublishedPost(nextPost)
     setDraft({ title: '', description: '', category: business?.category || 'Other', price: '', availability: '', imageUrl: '' })
@@ -849,7 +854,7 @@ function CreatePost({ onPublish, business }: { onPublish: (post: Post) => void; 
         <div>
           <span className="eyebrow route-eyebrow">CREATE A POST</span>
           <h1>Publish a campus offer</h1>
-          <p>Your published post is saved locally in this browser and appears immediately in the feed.</p>
+          <p>Share your latest products, services, and offers with your campus.</p>
 
           <form className="stack-form" onSubmit={submit} noValidate>
             <label htmlFor="post-title">Post title</label>
@@ -950,23 +955,33 @@ function ScreenHandoff({ title, owner }: { title: string; owner: string }) {
 }
 
 export default function App() {
+  const routeLocation = useLocation()
   const [savedBusiness, setSavedBusiness] = useState<Business | null>(() => readStoredBusiness())
   const [createdPosts, setCreatedPosts] = useState<Post[]>(() => readStoredPosts())
 
+  const [remoteBusinesses, setRemoteBusinesses] = useState<Business[]>([])
+  const [remotePosts, setRemotePosts] = useState<Post[]>([])
+  useEffect(() => { if (!backendReady) return; Promise.all([listBusinesses(),listPosts()]).then(([bs,ps])=>{
+    const mapped=bs.map((b:any)=>({...b,logoUrl:b.logo_url,email:'',location:'PAU campus'}));setRemoteBusinesses(mapped);
+    setRemotePosts(ps.map((p:any)=>({...p,businessId:p.business_id,businessName:mapped.find((b:Business)=>b.id===p.business_id)?.name||'Campus business',imageUrl:p.image_url})));
+    const session=JSON.parse(localStorage.getItem('biziz-session')||'null');const mine=mapped.find((b:any)=>b.owner_id===session?.user?.id);setSavedBusiness(mine || null)
+  }).catch(()=>{}); }, [routeLocation.pathname])
   const businesses = useMemo(() => {
-    if (!savedBusiness) return sampleBusinesses
+    if (!savedBusiness) return [...remoteBusinesses, ...sampleBusinesses]
     const rest = sampleBusinesses.filter((business) => business.id !== MY_BUSINESS_ID)
-    return [savedBusiness, ...rest]
-  }, [savedBusiness])
+    return [savedBusiness, ...remoteBusinesses.filter(b=>b.id!==savedBusiness.id), ...rest]
+  }, [savedBusiness, remoteBusinesses])
 
-  const posts = useMemo(() => [...createdPosts, ...samplePosts], [createdPosts])
+  const posts = useMemo(() => [...createdPosts, ...remotePosts, ...samplePosts], [createdPosts, remotePosts])
 
-  const saveBusiness = (business: Business) => {
+  const saveBusiness = async (business: Business) => {
+    const row = await persistBusiness(business); business = {...business,id:row.id}
     setSavedBusiness(business)
     window.localStorage.setItem(BUSINESS_STORAGE_KEY, JSON.stringify(business))
   }
 
-  const publishPost = (post: Post) => {
+  const publishPost = async (post: Post) => {
+    if (!savedBusiness) throw new Error('Set up your business before publishing.'); const row = await persistPost({...post,businessId:savedBusiness.id}); post = {...post,id:row.id,businessId:savedBusiness.id,businessName:savedBusiness.name}
     setCreatedPosts((state) => {
       const nextPosts = [post, ...state]
       window.localStorage.setItem(POSTS_STORAGE_KEY, JSON.stringify(nextPosts))
@@ -977,9 +992,10 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Welcome />} />
-      <Route path="/login" element={<ScreenHandoff title="Welcome back." owner="Vincent" />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/feed" element={<Feed posts={posts} businesses={businesses} />} />
+      <Route path="/login" element={<AccountAccess mode="login" />} />
+      <Route path="/account" element={<Account />} />
+      <Route path="/signup" element={<AccountAccess mode="signup" />} />
+      <Route path="/feed" element={<CampusFeed posts={posts} businesses={businesses} />} />
       <Route path="/posts/new" element={<CreatePost business={savedBusiness} onPublish={publishPost} />} />
       <Route path="/posts/:postId" element={<PostDetails posts={posts} businesses={businesses} />} />
       <Route path="/businesses/:businessId" element={<BusinessProfile businesses={businesses} posts={posts} />} />
@@ -988,3 +1004,6 @@ export default function App() {
     </Routes>
   )
 }
+
+
+
